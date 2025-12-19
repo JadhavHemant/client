@@ -447,6 +447,8 @@ export default function NavigationBar() {
         { name: "Units", href: "/Admin/Units" },
         { name: "Product", href: "/Admin/Product" },
         { name: "Warehouse", href: "/Admin/Warehouse" },
+        { name: "ProductStock", href: "/Admin/ProductStock" },
+
 
       ],
     },

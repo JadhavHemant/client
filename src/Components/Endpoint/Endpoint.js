@@ -129,6 +129,30 @@ export const WAREHOUSES = {
 };
 
 
+// src/Components/Endpoint/Endpoint.js
+export const PRODUCT_STOCK = {
+    BASE: '/product-stock',
+    BY_ID: (id) => `/product-stock/${id}`,
+    BY_PRODUCT: (productId) => `/product-stock/product/${productId}`,
+    BY_WAREHOUSE: (warehouseId) => `/product-stock/warehouse/${warehouseId}`,
+    LOW_STOCK: '/product-stock/low-stock',
+    ADJUST: (id) => `/product-stock/${id}/adjust`,
+    TRANSFER: '/product-stock/transfer',
+    SOFT_DELETE: (id) => `/product-stock/${id}/soft`,
+    HARD_DELETE: (id) => `/product-stock/${id}/hard`
+};
+
+export const buildUrl = (endpoint, params = {}) => {
+    const queryString = new URLSearchParams(
+        Object.entries(params).filter(([ , value]) => 
+            value !== null && value !== undefined && value !== ''
+        )
+    ).toString();
+    
+    return queryString ? `${endpoint}?${queryString}` : endpoint;
+};
+
+
 export default {
     COMPANIES,
     CATEGORIES,

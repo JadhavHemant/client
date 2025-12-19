@@ -21,6 +21,7 @@ import Accounts from "../AdminSite/CRM/Accounts/Accounts";
 import Units from "../AdminSite/Units/Units";
 import Companies from "../AdminSite/Company/Company";
 import Warehouse from "../AdminSite/Warehouse/Warehouse";
+import ProductStock from "../AdminSite/ProductStock/ProductStock";
 
 const MainRouting = () => {
   return (
@@ -40,7 +41,7 @@ const MainRouting = () => {
             <Route path="Sales" element={<Sell />} />
             <Route path="Product" element={<Products />} />
             <Route path="Warehouse" element={ <Warehouse/> }/>
-
+            <Route path="ProductStock" element={ <ProductStock/> }/>
 
             <Route path="Master" element={<MasterDetails />} />
             <Route path="Leads" element={<Leads />} />
