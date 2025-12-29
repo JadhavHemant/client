@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon,
     ArrowPathIcon, ArrowDownTrayIcon, EyeIcon, XMarkIcon,
     CubeIcon, ExclamationTriangleIcon, ArrowsRightLeftIcon,
-    ChartBarIcon, BuildingStorefrontIcon
+    ChartBarIcon
 } from '@heroicons/react/24/outline';
 import toast, { Toaster } from 'react-hot-toast';
-import * as productStockService from '../../../services/productStockService.js';
-import * as productService from '../../../services/productService.js';
-import * as warehouseService from '../../../services/warehouseService.js';
+import * as productStockService from '../../../services/productStockService';
+import * as productService from '../../../services/productService';
+import * as warehouseService from '../../../services/warehouseService';
 
 const ProductStock = () => {
     const [stocks, setStocks] = useState([]);
@@ -61,37 +61,70 @@ const ProductStock = () => {
 
     const [errors, setErrors] = useState({});
 
+    // ✅ Track initial mount to prevent double fetch
+    const isInitialMount = useRef(true);
+    const isFiltersInitialMount = useRef(true);
+
+    // ✅ Fetch dropdown data ONCE on mount
     useEffect(() => {
+        console.log('🚀 Component mounted - Fetching dropdown data');
         fetchDropdownData();
     }, []);
 
+    // ✅ Fetch stocks ONCE on mount
     useEffect(() => {
+        console.log('🚀 Initial stocks fetch');
+        fetchStocks(pagination.limit, 0, searchTerm);
+    }, []);
+
+    // ✅ Filters effect (but NOT on mount)
+    useEffect(() => {
+        if (isFiltersInitialMount.current) {
+            isFiltersInitialMount.current = false;
+            return; // Skip on first render
+        }
+
+        console.log('🔍 Filters changed:', filters);
         fetchStocks(pagination.limit, 0, searchTerm);
     }, [filters]);
 
+    // ✅ Debounced search (but NOT on mount)
     useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return; // Skip on first render
+        }
+
+        console.log('🔍 Search term changed:', searchTerm);
         const delayDebounce = setTimeout(() => {
             fetchStocks(pagination.limit, 0, searchTerm);
         }, 500);
+
         return () => clearTimeout(delayDebounce);
     }, [searchTerm]);
 
+    // ✅ FIXED: Use correct API call with proper parameters
     const fetchDropdownData = async () => {
         try {
+            // Fetch ALL products and warehouses (not just active ones)
             const [productsData, warehousesData] = await Promise.all([
-                productService.getActiveProducts(),
-                warehouseService.getActiveWarehouses()
+                productService.getProducts(1000, 0, '', { isActive: 'true' }), // Get active products
+                warehouseService.getWarehouses(1000, 0, '', { isActive: 'true' }) // Get active warehouses
             ]);
+            
             setProducts(productsData.data || []);
             setWarehouses(warehousesData.data || []);
+            console.log('✅ Dropdown data loaded');
         } catch (error) {
-            console.error('Error fetching dropdown data:', error);
+            console.error('❌ Error fetching dropdown data:', error);
             toast.error('Failed to load form data');
         }
     };
 
     const fetchStocks = async (limit = 10, offset = 0, search = '') => {
         setLoading(true);
+        console.log(`📡 Fetching stocks: limit=${limit}, offset=${offset}, search="${search}"`);
+        
         try {
             const data = await productStockService.getAllProductStocks(limit, offset, search, filters);
             setStocks(data.data || []);
@@ -99,8 +132,10 @@ const ProductStock = () => {
             if (data.pagination) {
                 setPagination(data.pagination);
             }
+            
+            console.log(`✅ Fetched ${data.data?.length || 0} stocks`);
         } catch (error) {
-            console.error('Error fetching stocks:', error);
+            console.error('❌ Error fetching stocks:', error);
             toast.error(error.message || 'Failed to fetch stocks');
         } finally {
             setLoading(false);
@@ -243,6 +278,7 @@ const ProductStock = () => {
             return;
         }
 
+        setLoading(true);
         try {
             await productStockService.adjustStockQuantity(
                 selectedStock.Id, 
@@ -255,6 +291,8 @@ const ProductStock = () => {
         } catch (error) {
             console.error('Error adjusting stock:', error);
             toast.error(error.message || 'Failed to adjust stock');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -272,6 +310,7 @@ const ProductStock = () => {
             return;
         }
 
+        setLoading(true);
         try {
             await productStockService.transferStock({
                 ...transferData,
@@ -283,11 +322,14 @@ const ProductStock = () => {
         } catch (error) {
             console.error('Error transferring stock:', error);
             toast.error(error.message || 'Failed to transfer stock');
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleDelete = async () => {
         if (!selectedStock) return;
+        setLoading(true);
         try {
             await productStockService.deleteProductStock(selectedStock.Id);
             toast.success('Product stock deleted successfully!');
@@ -297,6 +339,8 @@ const ProductStock = () => {
         } catch (error) {
             console.error('Error deleting stock:', error);
             toast.error(error.message || 'Failed to delete stock');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -350,6 +394,7 @@ const ProductStock = () => {
     const isViewMode = modalMode === 'view';
     const modalTitle = modalMode === 'create' ? 'Add Product Stock' : 
                       modalMode === 'edit' ? 'Edit Product Stock' : 'Stock Details';
+
 
     return (
         <>
@@ -604,12 +649,11 @@ const ProductStock = () => {
                 </div>
             </section>
 
-            {/* Create/Edit/View Modal */}
+            {/* CREATE/EDIT/VIEW MODAL - Continue in next part due to length */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
                     <div className="flex items-start justify-center min-h-full p-4 sm:p-8">
                         <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl my-8">
-                            {/* Header */}
                             <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
                                 <div className="flex items-center gap-2">
                                     <ChartBarIcon className="h-6 w-6 text-blue-500" />
@@ -620,12 +664,9 @@ const ProductStock = () => {
                                 </button>
                             </div>
 
-                            {/* Form */}
                             <form onSubmit={handleSubmit}>
                                 <div className="p-6 max-h-[calc(100vh-250px)] overflow-y-auto">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                                        {/* Product */}
                                         <div className="col-span-2">
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">
                                                 Product <span className="text-red-500">*</span>
@@ -641,7 +682,6 @@ const ProductStock = () => {
                                             {errors.ProductId && <p className="text-red-500 text-xs mt-1">{errors.ProductId}</p>}
                                         </div>
 
-                                        {/* Warehouse */}
                                         <div className="col-span-2">
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">
                                                 Warehouse <span className="text-red-500">*</span>
@@ -657,60 +697,49 @@ const ProductStock = () => {
                                             {errors.WarehouseId && <p className="text-red-500 text-xs mt-1">{errors.WarehouseId}</p>}
                                         </div>
 
-                                        {/* Quantity */}
                                         <div>
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">
                                                 Quantity <span className="text-red-500">*</span>
                                             </label>
                                             <input type="number" name="Quantity" value={formData.Quantity} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                min="0"
+                                                disabled={isViewMode} min="0"
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.Quantity ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}
                                                 placeholder="Enter quantity" />
                                             {errors.Quantity && <p className="text-red-500 text-xs mt-1">{errors.Quantity}</p>}
                                         </div>
 
-                                        {/* Reserved Quantity */}
                                         <div>
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">Reserved Quantity</label>
                                             <input type="number" name="ReservedQuantity" value={formData.ReservedQuantity} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                min="0"
+                                                disabled={isViewMode} min="0"
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
                                                 placeholder="Reserved quantity" />
                                         </div>
 
-                                        {/* Minimum Stock */}
                                         <div>
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">Minimum Stock</label>
                                             <input type="number" name="MinimumStock" value={formData.MinimumStock} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                min="0"
+                                                disabled={isViewMode} min="0"
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
                                                 placeholder="Minimum stock" />
                                         </div>
 
-                                        {/* Maximum Stock */}
                                         <div>
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">Maximum Stock</label>
                                             <input type="number" name="MaximumStock" value={formData.MaximumStock} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                min="0"
+                                                disabled={isViewMode} min="0"
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
                                                 placeholder="Maximum stock" />
                                         </div>
 
-                                        {/* Reorder Level */}
                                         <div className="col-span-2">
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">Reorder Level</label>
                                             <input type="number" name="ReorderLevel" value={formData.ReorderLevel} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                min="0"
+                                                disabled={isViewMode} min="0"
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
                                                 placeholder="Reorder level" />
                                         </div>
 
-                                        {/* Active Status */}
                                         {!isViewMode && (
                                             <div className="col-span-2">
                                                 <label className="flex items-center">
@@ -723,7 +752,6 @@ const ProductStock = () => {
                                     </div>
                                 </div>
 
-                                {/* Footer */}
                                 <div className="flex justify-end gap-3 p-6 border-t sticky bottom-0 bg-white rounded-b-xl">
                                     <button type="button" onClick={() => { setShowModal(false); resetForm(); }}
                                         className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition">
@@ -743,7 +771,7 @@ const ProductStock = () => {
                 </div>
             )}
 
-            {/* Adjust Stock Modal */}
+            {/* ADJUST MODAL */}
             {showAdjustModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
@@ -798,7 +826,7 @@ const ProductStock = () => {
                 </div>
             )}
 
-            {/* Transfer Stock Modal */}
+            {/* TRANSFER MODAL */}
             {showTransferModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
@@ -881,7 +909,7 @@ const ProductStock = () => {
                 </div>
             )}
 
-            {/* Delete Modal */}
+            {/* DELETE MODAL */}
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">

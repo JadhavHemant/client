@@ -22,6 +22,10 @@ import Units from "../AdminSite/Units/Units";
 import Companies from "../AdminSite/Company/Company";
 import Warehouse from "../AdminSite/Warehouse/Warehouse";
 import ProductStock from "../AdminSite/ProductStock/ProductStock";
+import StockMovements from "../AdminSite/StockMovements/StockMovements";
+import SupplierManagement from "../AdminSite/Suppliers/SupplierManagement";
+import PurchaseOrderManagement from "../AdminSite/PurchaseOrders/PurchaseOrderManagement";
+import PurchaseOrderItems from "../AdminSite/PurchaseOrderItems/PurchaseOrderItems";
 
 const MainRouting = () => {
   return (
@@ -42,6 +46,12 @@ const MainRouting = () => {
             <Route path="Product" element={<Products />} />
             <Route path="Warehouse" element={ <Warehouse/> }/>
             <Route path="ProductStock" element={ <ProductStock/> }/>
+            <Route path="StockMovements" element={ <StockMovements/> }/>
+            <Route path="Supplier" element={ <SupplierManagement/> }/>
+            <Route path="PurchaseOrder" element={ <PurchaseOrderManagement/> }/>
+            <Route path="PurchaseOrderIteam" element={ <PurchaseOrderItems/> }/>
+
+
 
             <Route path="Master" element={<MasterDetails />} />
             <Route path="Leads" element={<Leads />} />

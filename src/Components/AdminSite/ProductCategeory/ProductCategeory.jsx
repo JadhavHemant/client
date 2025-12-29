@@ -1,31 +1,19 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  PlusIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  MagnifyingGlassIcon,
-  ArrowPathIcon,
-  ArrowDownTrayIcon,
-  EyeIcon,
-  XMarkIcon,
+  PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon,
+  ArrowPathIcon, ArrowDownTrayIcon, EyeIcon, XMarkIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import axios from 'axios';
-import Cookies from 'js-cookie';  // ✅ Import js-cookie
 import toast, { Toaster } from 'react-hot-toast';
+import axiosInstance from '../../AdminSite/utils/axiosInstance';
 import { PRODUCT_CATEGORY } from '../../Endpoint/Endpoint';
 
 const ProductCategories = () => {
-  // State Management
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
-    total: 0,
-    limit: 10,
-    offset: 0,
-    totalPages: 0,
-    currentPage: 1
+    total: 0, limit: 10, offset: 0, totalPages: 0, currentPage: 1,
+    hasNext: false, hasPrevious: false
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -39,45 +27,60 @@ const ProductCategories = () => {
   });
   const [formErrors, setFormErrors] = useState({});
 
-  // ✅ Get token from cookies instead of localStorage
-  const getAuthToken = () => Cookies.get('accessToken') || '';
+  const isInitialMount = useRef(true);
 
-  // Axios Config
-  const getAxiosConfig = () => ({
-    headers: {
-      'Authorization': `Bearer ${getAuthToken()}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  // Fetch Categories
   const fetchCategories = async (limit = 10, offset = 0, search = '') => {
     setLoading(true);
+    console.log(`📡 Fetching: limit=${limit}, offset=${offset}, search="${search}"`);
+    
     try {
-      const response = await axios.get(
-        PRODUCT_CATEGORY.GET_ALL(limit, offset, search),
-        getAxiosConfig()
+      const response = await axiosInstance.get(
+        PRODUCT_CATEGORY.GET_ALL(limit, offset, search)
       );
       
       if (response.data) {
-        setCategories(response.data.data || []);
-        setPagination(response.data.pagination || {});
+        const data = response.data.data || [];
+        setCategories(data);
+        
+        const paginationData = response.data.pagination || {};
+        const total = paginationData.total || 0;
+        const currentLimit = paginationData.limit || limit;
+        const currentOffset = paginationData.offset || offset;
+        const totalPages = Math.ceil(total / currentLimit) || 1;
+        const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+
+        setPagination({
+          total,
+          limit: currentLimit,
+          offset: currentOffset,
+          totalPages,
+          currentPage,
+          hasNext: paginationData.hasNext !== undefined ? paginationData.hasNext : currentPage < totalPages,
+          hasPrevious: paginationData.hasPrevious !== undefined ? paginationData.hasPrevious : currentPage > 1
+        });
+
+        console.log(`✅ Fetched ${data.length} categories (Total: ${total})`);
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('❌ Error fetching categories:', error);
       toast.error(error.response?.data?.message || 'Failed to fetch categories');
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial Load
   useEffect(() => {
-    fetchCategories(pagination.limit, pagination.offset, searchTerm);
+    console.log('🚀 Component mounted - Initial fetch');
+    fetchCategories(pagination.limit, 0, searchTerm);
   }, []);
 
-  // Search Handler with Debounce
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    console.log('🔍 Search term changed:', searchTerm);
     const delayDebounce = setTimeout(() => {
       fetchCategories(pagination.limit, 0, searchTerm);
     }, 500);
@@ -85,7 +88,6 @@ const ProductCategories = () => {
     return () => clearTimeout(delayDebounce);
   }, [searchTerm]);
 
-  // Form Validation
   const validateForm = () => {
     const errors = {};
     
@@ -99,48 +101,43 @@ const ProductCategories = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Create Category
   const handleCreate = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
+      toast.error('Please fix validation errors');
       return;
     }
 
     setLoading(true);
     try {
-      await axios.post(
-        PRODUCT_CATEGORY.CREATE,
-        formData,
-        getAxiosConfig()
-      );
+      await axiosInstance.post(PRODUCT_CATEGORY.CREATE, formData);
       
       toast.success('Category created successfully!');
       setShowCreateModal(false);
       resetForm();
       fetchCategories(pagination.limit, pagination.offset, searchTerm);
     } catch (error) {
-      console.error('Error creating category:', error);
+      console.error('❌ Error creating category:', error);
       toast.error(error.response?.data?.message || 'Failed to create category');
     } finally {
       setLoading(false);
     }
   };
 
-  // Update Category
   const handleUpdate = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) {
+      toast.error('Please fix validation errors');
       return;
     }
 
     setLoading(true);
     try {
-      await axios.put(
+      await axiosInstance.put(
         PRODUCT_CATEGORY.UPDATE(selectedCategory.Id),
-        formData,
-        getAxiosConfig()
+        formData
       );
       
       toast.success('Category updated successfully!');
@@ -148,35 +145,30 @@ const ProductCategories = () => {
       resetForm();
       fetchCategories(pagination.limit, pagination.offset, searchTerm);
     } catch (error) {
-      console.error('Error updating category:', error);
+      console.error('❌ Error updating category:', error);
       toast.error(error.response?.data?.message || 'Failed to update category');
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete Category
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await axios.delete(
-        PRODUCT_CATEGORY.SOFT_DELETE(selectedCategory.Id),
-        getAxiosConfig()
-      );
+      await axiosInstance.delete(PRODUCT_CATEGORY.SOFT_DELETE(selectedCategory.Id));
       
       toast.success('Category deleted successfully!');
       setShowDeleteModal(false);
       setSelectedCategory(null);
       fetchCategories(pagination.limit, pagination.offset, searchTerm);
     } catch (error) {
-      console.error('Error deleting category:', error);
+      console.error('❌ Error deleting category:', error);
       toast.error(error.response?.data?.message || 'Failed to delete category');
     } finally {
       setLoading(false);
     }
   };
 
-  // Export to CSV
   const handleExport = () => {
     if (categories.length === 0) {
       toast.error('No data to export');
@@ -208,14 +200,12 @@ const ProductCategories = () => {
     toast.success('Categories exported successfully!');
   };
 
-  // Reset Form
   const resetForm = () => {
     setFormData({ CategoryName: '', Description: '' });
     setFormErrors({});
     setSelectedCategory(null);
   };
 
-  // Open Edit Modal
   const openEditModal = (category) => {
     setSelectedCategory(category);
     setFormData({
@@ -225,19 +215,16 @@ const ProductCategories = () => {
     setShowEditModal(true);
   };
 
-  // Open Delete Modal
   const openDeleteModal = (category) => {
     setSelectedCategory(category);
     setShowDeleteModal(true);
   };
 
-  // Open View Modal
   const openViewModal = (category) => {
     setSelectedCategory(category);
     setShowViewModal(true);
   };
 
-  // Pagination Handlers
   const handlePageChange = (newPage) => {
     const newOffset = (newPage - 1) * pagination.limit;
     fetchCategories(pagination.limit, newOffset, searchTerm);
@@ -247,9 +234,14 @@ const ProductCategories = () => {
     fetchCategories(newLimit, 0, searchTerm);
   };
 
-  // Format Date
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    const options = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
@@ -260,24 +252,17 @@ const ProductCategories = () => {
         toastOptions={{
           success: {
             duration: 3000,
-            style: {
-              background: '#10B981',
-              color: '#fff',
-            },
+            style: { background: '#10B981', color: '#fff' }
           },
           error: {
             duration: 4000,
-            style: {
-              background: '#EF4444',
-              color: '#fff',
-            },
-          },
+            style: { background: '#EF4444', color: '#fff' }
+          }
         }}
       />
       
       <section className="py-1 bg-blueGray-50 min-h-screen">
         <div className="w-full xl:w-10/12 px-4 mx-auto mt-6">
-          {/* Header Card */}
           <div className="relative flex flex-col min-w-0 break-words w-full mb-6 shadow-lg rounded-lg bg-white border-0">
             <div className="rounded-t bg-white mb-0 px-6 py-6">
               <div className="text-center flex flex-col md:flex-row justify-between items-center gap-4">
@@ -320,7 +305,6 @@ const ProductCategories = () => {
               </div>
             </div>
 
-            {/* Search Bar */}
             <div className="px-6 pb-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -344,7 +328,6 @@ const ProductCategories = () => {
               </div>
             </div>
 
-            {/* Table */}
             <div className="block w-full overflow-x-auto">
               <table className="items-center w-full bg-transparent border-collapse">
                 <thead>
@@ -446,7 +429,6 @@ const ProductCategories = () => {
               </table>
             </div>
 
-            {/* Pagination */}
             {pagination.total > 0 && (
               <div className="px-6 py-4 border-t border-blueGray-200">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -464,14 +446,14 @@ const ProductCategories = () => {
                       <option value="100">100</option>
                     </select>
                     <span className="text-sm text-blueGray-600">
-                      Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total}
+                      Showing {pagination.offset + 1} to {Math.min(pagination.offset + categories.length, pagination.total)} of {pagination.total}
                     </span>
                   </div>
 
                   <div className="flex gap-2">
                     <button
                       onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.hasPrevious}
+                      disabled={pagination.currentPage === 1}
                       className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       Previous
@@ -508,7 +490,7 @@ const ProductCategories = () => {
                     
                     <button
                       onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.hasNext}
+                      disabled={pagination.currentPage === pagination.totalPages}
                       className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       Next
@@ -521,210 +503,237 @@ const ProductCategories = () => {
         </div>
       </section>
 
-      {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 backdrop-blur-xs  bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-blueGray-700">Create New Category</h3>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleCreate} className="p-6">
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Category Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.CategoryName}
-                  onChange={(e) => setFormData({ ...formData, CategoryName: e.target.value })}
-                  className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
-                    formErrors.CategoryName ? 'ring-2 ring-red-500' : ''
-                  }`}
-                  placeholder="Enter category name"
-                  maxLength="100"
-                />
-                {formErrors.CategoryName && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.CategoryName}</p>
-                )}
-                <p className="text-blueGray-400 text-xs mt-1">
-                  {formData.CategoryName.length}/100 characters
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.Description}
-                  onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
-                  className="border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full"
-                  placeholder="Enter description (optional)"
-                  rows="4"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-start justify-center min-h-full p-4 sm:p-8">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
+                <h3 className="text-xl font-bold text-blueGray-700">Create New Category</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-pink-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Creating...' : 'Create Category'}
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-            </form>
+              
+              <form onSubmit={handleCreate}>
+                <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                  <div className="mb-4">
+                    <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                      Category Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.CategoryName}
+                      onChange={(e) => {
+                        setFormData({ ...formData, CategoryName: e.target.value });
+                        if (formErrors.CategoryName) {
+                          setFormErrors({ ...formErrors, CategoryName: '' });
+                        }
+                      }}
+                      className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
+                        formErrors.CategoryName ? 'ring-2 ring-red-500' : ''
+                      }`}
+                      placeholder="Enter category name"
+                      maxLength="100"
+                    />
+                    {formErrors.CategoryName && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.CategoryName}</p>
+                    )}
+                    <p className="text-blueGray-400 text-xs mt-1">
+                      {formData.CategoryName.length}/100 characters
+                    </p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={formData.Description}
+                      onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
+                      className="border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full"
+                      placeholder="Enter description (optional)"
+                      rows="4"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 p-6 border-t sticky bottom-0 bg-white rounded-b-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetForm();
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-pink-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Creating...' : 'Create Category'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 backdrop-blur-xs  bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-blueGray-700">Edit Category</h3>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleUpdate} className="p-6">
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Category Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.CategoryName}
-                  onChange={(e) => setFormData({ ...formData, CategoryName: e.target.value })}
-                  className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
-                    formErrors.CategoryName ? 'ring-2 ring-red-500' : ''
-                  }`}
-                  placeholder="Enter category name"
-                  maxLength="100"
-                />
-                {formErrors.CategoryName && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.CategoryName}</p>
-                )}
-                <p className="text-blueGray-400 text-xs mt-1">
-                  {formData.CategoryName.length}/100 characters
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.Description}
-                  onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
-                  className="border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full"
-                  placeholder="Enter description (optional)"
-                  rows="4"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
+      {showEditModal && selectedCategory && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-start justify-center min-h-full p-4 sm:p-8">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md my-8 animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
+                <h3 className="text-xl font-bold text-blueGray-700">Edit Category</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowEditModal(false);
                     resetForm();
                   }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Updating...' : 'Update Category'}
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-            </form>
+              
+              <form onSubmit={handleUpdate}>
+                <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                  <div className="mb-4">
+                    <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                      Category Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.CategoryName}
+                      onChange={(e) => {
+                        setFormData({ ...formData, CategoryName: e.target.value });
+                        if (formErrors.CategoryName) {
+                          setFormErrors({ ...formErrors, CategoryName: '' });
+                        }
+                      }}
+                      className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
+                        formErrors.CategoryName ? 'ring-2 ring-red-500' : ''
+                      }`}
+                      placeholder="Enter category name"
+                      maxLength="100"
+                    />
+                    {formErrors.CategoryName && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.CategoryName}</p>
+                    )}
+                    <p className="text-blueGray-400 text-xs mt-1">
+                      {formData.CategoryName.length}/100 characters
+                    </p>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={formData.Description}
+                      onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
+                      className="border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full"
+                      placeholder="Enter description (optional)"
+                      rows="4"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 p-6 border-t sticky bottom-0 bg-white rounded-b-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      resetForm();
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-green-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Updating...' : 'Update Category'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* View Modal */}
       {showViewModal && selectedCategory && (
-        <div className="fixed inset-0 backdrop-blur-xs  bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-blueGray-700">Category Details</h3>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">ID:</span>
-                <span className="text-blueGray-700 font-semibold">{selectedCategory.Id}</span>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-bold text-blueGray-700">Category Details</h3>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">ID:</span>
+                  <span className="text-blueGray-700 font-semibold">{selectedCategory.Id}</span>
+                </div>
+
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Category Name:</span>
+                  <span className="text-blueGray-700 font-semibold">{selectedCategory.CategoryName}</span>
+                </div>
+
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Description:</span>
+                  <span className="text-blueGray-700 flex-1">
+                    {selectedCategory.Description || <span className="italic text-blueGray-400">No description</span>}
+                  </span>
+                </div>
+
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Created At:</span>
+                  <span className="text-blueGray-700">{formatDate(selectedCategory.CreatedAt)}</span>
+                </div>
+
+                {selectedCategory.UpdatedAt && (
+                  <div className="flex items-start">
+                    <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Updated At:</span>
+                    <span className="text-blueGray-700">{formatDate(selectedCategory.UpdatedAt)}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Category Name:</span>
-                <span className="text-blueGray-700 font-semibold">{selectedCategory.CategoryName}</span>
-              </div>
-
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Description:</span>
-                <span className="text-blueGray-700 flex-1">
-                  {selectedCategory.Description || <span className="italic text-blueGray-400">No description</span>}
-                </span>
-              </div>
-
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Created At:</span>
-                <span className="text-blueGray-700">{formatDate(selectedCategory.CreatedAt)}</span>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t">
+              <div className="flex justify-end gap-3 p-6 border-t">
                 <button
                   onClick={() => {
                     setShowViewModal(false);
                     openEditModal(selectedCategory);
                   }}
-                  className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="bg-green-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 flex items-center gap-2"
                 >
+                  <PencilIcon className="h-4 w-4" />
                   Edit
                 </button>
                 <button
                   onClick={() => setShowViewModal(false)}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
                 >
                   Close
                 </button>
@@ -734,48 +743,52 @@ const ProductCategories = () => {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedCategory && (
-        <div className="fixed inset-0 backdrop-blur-xs  bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="p-6">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                <TrashIcon className="h-6 w-6 text-red-600" />
-              </div>
-              
-              <h3 className="text-xl font-bold text-center text-blueGray-700 mb-2">
-                Delete Category
-              </h3>
-              
-              <p className="text-center text-blueGray-600 mb-6">
-                Are you sure you want to delete "<strong>{selectedCategory.CategoryName}</strong>"? 
-                This action will mark it as deleted and it can be recovered later.
-              </p>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
+                  <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-center text-blueGray-700 mb-2">
+                  Delete Category
+                </h3>
+                
+                <p className="text-center text-blueGray-600 mb-6">
+                  Are you sure you want to delete "<strong className="text-blueGray-800">{selectedCategory.CategoryName}</strong>"? 
+                  <br />
+                  <span className="text-sm text-blueGray-500 mt-2 inline-block">
+                    This action will mark it as deleted and it can be recovered later.
+                  </span>
+                </p>
 
-              <div className="flex justify-center gap-2">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setSelectedCategory(null);
-                  }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="bg-red-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Deleting...' : 'Delete'}
-                </button>
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setSelectedCategory(null);
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={loading}
+                    className="bg-red-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Deleting...' : 'Delete Category'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Custom Styles */}
       <style jsx>{`
         @keyframes fadeIn {
           from {

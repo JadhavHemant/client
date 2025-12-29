@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon,
     ArrowPathIcon, ArrowDownTrayIcon, EyeIcon, XMarkIcon,
@@ -48,7 +48,13 @@ const Products = () => {
     const [imagePreview, setImagePreview] = useState(null);
     const [errors, setErrors] = useState({});
 
+    // ✅ Track initial mount to prevent double fetch
+    const isInitialMount = useRef(true);
+    const isFiltersInitialMount = useRef(true);
+
+    // ✅ Fetch dropdown data ONCE on mount
     useEffect(() => {
+        console.log('🚀 Component mounted - Fetching dropdown data');
         fetchDropdownData();
     }, []);
 
@@ -62,14 +68,18 @@ const Products = () => {
 
             const unitsData = await unitService.getActiveUnits();
             setUnits(unitsData.data || []);
+            
+            console.log('✅ Dropdown data loaded');
         } catch (error) {
-            console.error('Error fetching dropdown data:', error);
+            console.error('❌ Error fetching dropdown data:', error);
             toast.error('Failed to load form data');
         }
     };
 
     const fetchProducts = async (limit = 10, offset = 0, search = '') => {
         setLoading(true);
+        console.log(`📡 Fetching products: limit=${limit}, offset=${offset}, search="${search}"`);
+        
         try {
             const data = await productService.getProducts(limit, offset, search, filters);
             setProducts(data.data || []);
@@ -86,22 +96,45 @@ const Products = () => {
                 hasNext: data.pagination?.hasNext || (currentPage < totalPages),
                 hasPrevious: data.pagination?.hasPrevious || (currentPage > 1)
             });
+            
+            console.log(`✅ Fetched ${data.data?.length || 0} products`);
         } catch (error) {
-            console.error('Error fetching products:', error);
+            console.error('❌ Error fetching products:', error);
             toast.error(error.response?.data?.message || 'Failed to fetch products');
         } finally {
             setLoading(false);
         }
     };
 
+    // ✅ Fetch products ONCE on mount
     useEffect(() => {
+        console.log('🚀 Initial product fetch');
+        fetchProducts(pagination.limit, 0, searchTerm);
+    }, []);
+
+    // ✅ Filters effect (but NOT on mount)
+    useEffect(() => {
+        if (isFiltersInitialMount.current) {
+            isFiltersInitialMount.current = false;
+            return; // Skip on first render
+        }
+
+        console.log('🔍 Filters changed:', filters);
         fetchProducts(pagination.limit, 0, searchTerm);
     }, [filters]);
 
+    // ✅ Debounced search (but NOT on mount)
     useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return; // Skip on first render
+        }
+
+        console.log('🔍 Search term changed:', searchTerm);
         const delayDebounce = setTimeout(() => {
             fetchProducts(pagination.limit, 0, searchTerm);
         }, 500);
+
         return () => clearTimeout(delayDebounce);
     }, [searchTerm]);
 
@@ -189,7 +222,6 @@ const Products = () => {
             NotifyStockReload: product.NotifyStockReload,
             productImage: null
         });
-        // ✅ FIXED
         if (product.ProductImage) {
             setImagePreview(`${API_BASE_URL}${product.ProductImage}`);
         }
@@ -222,7 +254,6 @@ const Products = () => {
             NotifyStockReload: product.NotifyStockReload,
             productImage: null
         });
-        // ✅ FIXED
         if (product.ProductImage) {
             setImagePreview(`${API_BASE_URL}${product.ProductImage}`);
         }
@@ -272,6 +303,7 @@ const Products = () => {
 
     const handleDelete = async () => {
         if (!selectedProduct) return;
+        setLoading(true);
         try {
             await productService.deleteProduct(selectedProduct.Id);
             toast.success('Product deleted successfully!');
@@ -281,6 +313,8 @@ const Products = () => {
         } catch (error) {
             console.error('Error deleting product:', error);
             toast.error(error.response?.data?.message || 'Failed to delete product');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -335,7 +369,10 @@ const Products = () => {
 
     return (
         <>
-            <Toaster position="top-right" />
+            <Toaster position="top-right" toastOptions={{
+                success: { duration: 3000, style: { background: '#10B981', color: '#fff' } },
+                error: { duration: 4000, style: { background: '#EF4444', color: '#fff' } }
+            }} />
 
             <section className="py-1 bg-blueGray-50 min-h-screen">
                 <div className="w-full xl:w-11/12 px-4 mx-auto mt-6">
@@ -579,12 +616,11 @@ const Products = () => {
                 </div>
             </section>
 
-            {/* ✅ FIXED MODAL */}
+            {/* Modal */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
                     <div className="flex items-start justify-center min-h-full p-4 sm:p-8">
                         <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
-                            {/* Header - Sticky */}
                             <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
                                 <div className="flex items-center gap-2">
                                     <CubeIcon className="h-6 w-6 text-blue-500" />
@@ -595,7 +631,6 @@ const Products = () => {
                                 </button>
                             </div>
 
-                            {/* Form Content - Scrollable */}
                             <form onSubmit={handleSubmit}>
                                 <div className="p-6 max-h-[calc(100vh-250px)] overflow-y-auto">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -682,7 +717,7 @@ const Products = () => {
                                                 className={`border-0 px-3 py-3 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}>
                                                 <option value="">Select Unit</option>
                                                 {units.map(u => (
-                                                    <option key={u.Id} value={u.Id}>{u.UnitName} ({u.Symbol})</option>
+                                                    <option key={u.Id} value={u.Id}>{u.Name} {u.Symbol && `(${u.Symbol})`}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -820,7 +855,6 @@ const Products = () => {
                                     </div>
                                 </div>
 
-                                {/* Footer Buttons - Sticky */}
                                 <div className="flex justify-end gap-3 p-6 border-t sticky bottom-0 bg-white rounded-b-xl">
                                     <button type="button" onClick={() => { setShowModal(false); resetForm(); }}
                                         className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition">
@@ -840,8 +874,8 @@ const Products = () => {
                 </div>
             )}
 
-            {/* ✅ FIXED DELETE MODAL */}
-            {showDeleteModal && (
+            {/* Delete Modal */}
+            {showDeleteModal && selectedProduct && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
                         <div className="flex justify-between items-center p-6 border-b">
@@ -854,16 +888,17 @@ const Products = () => {
                             </button>
                         </div>
                         <div className="p-6">
-                            <p className="text-blueGray-600">Are you sure you want to delete "{selectedProduct?.ProductName}"? This action cannot be undone.</p>
+                            <p className="text-blueGray-600">Are you sure you want to delete "<strong>{selectedProduct?.ProductName}</strong>"? This action cannot be undone.</p>
                         </div>
                         <div className="flex justify-end gap-3 p-6 border-t">
                             <button onClick={() => { setShowDeleteModal(false); setSelectedProduct(null); }}
                                 className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition">
                                 Cancel
                             </button>
-                            <button onClick={handleDelete}
-                                className="bg-red-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition">
-                                Delete
+                            <button onClick={handleDelete} disabled={loading}
+                                className="bg-red-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition disabled:opacity-50 flex items-center gap-2">
+                                {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                                {loading ? 'Deleting...' : 'Delete'}
                             </button>
                         </div>
                     </div>

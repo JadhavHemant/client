@@ -1,392 +1,320 @@
-// src/Components/AdminSite/Company/Company.jsx
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  MagnifyingGlassIcon,
-  ArrowPathIcon,
-  ArrowDownTrayIcon,
-  EyeIcon,
-  XMarkIcon,
-  BuildingOfficeIcon,
-  ExclamationTriangleIcon,
-} from "@heroicons/react/24/outline";
-import toast, { Toaster } from "react-hot-toast";
-import * as companyService from "../Company/companyService";
+    PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon,
+    ArrowPathIcon, ArrowDownTrayIcon, EyeIcon, XMarkIcon,
+    BuildingOfficeIcon, ExclamationTriangleIcon
+} from '@heroicons/react/24/outline';
+import toast, { Toaster } from 'react-hot-toast';
+import * as companyService from '../../../services/companyService';
 
 const Company = () => {
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    limit: 10,
-    offset: 0,
-    totalPages: 0,
-    currentPage: 1,
-    hasNext: false,
-    hasPrevious: false,
-  });
-  const [searchTerm, setSearchTerm] = useState("");
-
-  // Modal States
-  const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState("create");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState(null);
-
-  // Form States
-  const [formData, setFormData] = useState({
-    CompanyName: "",
-    BusinessType: "",
-    GstNumber: "",
-    Address: "",
-    City: "",
-    State: "",
-    Country: "India",
-    PostalCode: "",
-    Website: "",
-    OwnerName: "",
-    Email: "",
-    Phone: "",
-    logo: null,
-    IsActive: true,
-    Flag: false,
-  });
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [errors, setErrors] = useState({});
-
-  // ✅ Fetch Companies with proper pagination
-  const fetchCompanies = async (limit = 10, offset = 0, search = "") => {
-    setLoading(true);
-    try {
-      const data = await companyService.getCompanies(limit, offset, search);
-      setCompanies(data.data || []);
-
-      // ✅ Properly set pagination with fallback values
-      const total = data.pagination?.total || 0;
-      const currentLimit = data.pagination?.limit || limit;
-      const currentOffset = data.pagination?.offset || offset;
-      const totalPages = Math.ceil(total / currentLimit) || 1;
-      const currentPage = Math.floor(currentOffset / currentLimit) + 1;
-
-      setPagination({
-        total: total,
-        limit: currentLimit,
-        offset: currentOffset,
-        totalPages: totalPages,
-        currentPage: currentPage,
-        hasNext: data.pagination?.hasNext || currentPage < totalPages,
-        hasPrevious: data.pagination?.hasPrevious || currentPage > 1,
-      });
-    } catch (error) {
-      console.error("Error fetching companies:", error);
-      toast.error(error.response?.data?.message || "Failed to fetch companies");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCompanies(pagination.limit, 0, searchTerm);
-  }, []);
-
-  useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      fetchCompanies(pagination.limit, 0, searchTerm);
-    }, 500);
-    return () => clearTimeout(delayDebounce);
-  }, [searchTerm]);
-
-  // Reset Form
-  const resetForm = () => {
-    setFormData({
-      CompanyName: "",
-      BusinessType: "",
-      GstNumber: "",
-      Address: "",
-      City: "",
-      State: "",
-      Country: "India",
-      PostalCode: "",
-      Website: "",
-      OwnerName: "",
-      Email: "",
-      Phone: "",
-      logo: null,
-      IsActive: true,
-      Flag: false,
+    const [companies, setCompanies] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [pagination, setPagination] = useState({
+        total: 0, limit: 10, offset: 0, totalPages: 0, currentPage: 1,
+        hasNext: false, hasPrevious: false
     });
-    setLogoPreview(null);
-    setErrors({});
-  };
+    const [searchTerm, setSearchTerm] = useState('');
 
-  // Handle Input Change
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
+    const [showModal, setShowModal] = useState(false);
+    const [modalMode, setModalMode] = useState('create');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState(null);
 
-  // Handle Logo Upload
-  const handleLogoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be less than 5MB");
-        return;
-      }
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Only JPEG, PNG, and WEBP images allowed");
-        return;
-      }
-      setFormData((prev) => ({ ...prev, logo: file }));
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoPreview(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Validate Form
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.CompanyName.trim())
-      newErrors.CompanyName = "Company name is required";
-    if (!formData.Email.trim()) {
-      newErrors.Email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.Email)) {
-      newErrors.Email = "Invalid email format";
-    }
-    if (formData.Phone && !/^[6-9]\d{9}$/.test(formData.Phone)) {
-      newErrors.Phone = "Invalid phone number";
-    }
-    if (
-      formData.GstNumber &&
-      !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
-        formData.GstNumber.toUpperCase()
-      )
-    ) {
-      newErrors.GstNumber = "Invalid GST format";
-    }
-    if (formData.PostalCode && !/^\d{6}$/.test(formData.PostalCode)) {
-      newErrors.PostalCode = "Invalid postal code";
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Open Create Modal
-  const openCreateModal = () => {
-    resetForm();
-    setModalMode("create");
-    setSelectedCompany(null);
-    setShowModal(true);
-  };
-
-  // Open Edit Modal
-  const openEditModal = (company) => {
-    setFormData({
-      CompanyName: company.CompanyName || "",
-      BusinessType: company.BusinessType || "",
-      GstNumber: company.GstNumber || "",
-      Address: company.Address || "",
-      City: company.City || "",
-      State: company.State || "",
-      Country: company.Country || "India",
-      PostalCode: company.PostalCode || "",
-      Website: company.Website || "",
-      OwnerName: company.OwnerName || "",
-      Email: company.Email || "",
-      Phone: company.Phone || "",
-      logo: null,
-      IsActive: company.IsActive,
-      Flag: company.Flag,
+    const [formData, setFormData] = useState({
+        CompanyName: '', BusinessType: '', GstNumber: '', Address: '',
+        City: '', State: '', Country: 'India', PostalCode: '', Website: '',
+        OwnerName: '', Email: '', Phone: '', logo: null, IsActive: true, Flag: false
     });
-    if (company.LogoUrl) {
-      setLogoPreview(
-        `${process.env.REACT_APP_API_URL?.replace("/api", "")}${
-          company.LogoUrl
-        }`
-      );
-    }
-    setModalMode("edit");
-    setSelectedCompany(company);
-    setShowModal(true);
-  };
+    
+    const [logoPreview, setLogoPreview] = useState(null);
+    const [errors, setErrors] = useState({});
 
-  // Open View Modal
-  const openViewModal = (company) => {
-    setFormData({
-      CompanyName: company.CompanyName || "",
-      BusinessType: company.BusinessType || "",
-      GstNumber: company.GstNumber || "",
-      Address: company.Address || "",
-      City: company.City || "",
-      State: company.State || "",
-      Country: company.Country || "India",
-      PostalCode: company.PostalCode || "",
-      Website: company.Website || "",
-      OwnerName: company.OwnerName || "",
-      Email: company.Email || "",
-      Phone: company.Phone || "",
-      logo: null,
-      IsActive: company.IsActive,
-      Flag: company.Flag,
-    });
-    if (company.LogoUrl) {
-      setLogoPreview(
-        `${process.env.REACT_APP_API_URL?.replace("/api", "")}${
-          company.LogoUrl
-        }`
-      );
-    }
-    setModalMode("view");
-    setSelectedCompany(company);
-    setShowModal(true);
-  };
+    // ✅ Track initial mount to prevent double fetch
+    const isInitialMount = useRef(true);
 
-  // Handle Submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (modalMode === "view") return;
+    // ✅ Fetch companies ONCE on mount
+    useEffect(() => {
+        console.log('🚀 Component mounted - Initial fetch');
+        fetchCompanies(pagination.limit, 0, searchTerm);
+    }, []);
 
-    if (!validateForm()) {
-      toast.error("Please fix validation errors");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const submitData = new FormData();
-      Object.keys(formData).forEach((key) => {
-        if (key === "logo" && formData.logo) {
-          submitData.append("logo", formData.logo);
-        } else if (key !== "logo") {
-          submitData.append(key, formData[key]);
+    // ✅ Debounced search (but NOT on mount)
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return; // Skip on first render
         }
-      });
 
-      if (modalMode === "create") {
-        await companyService.createCompany(submitData);
-        toast.success("Company created successfully!");
-      } else if (modalMode === "edit") {
-        await companyService.updateCompany(selectedCompany.Id, submitData);
-        toast.success("Company updated successfully!");
-      }
+        console.log('🔍 Search term changed:', searchTerm);
+        const delayDebounce = setTimeout(() => {
+            fetchCompanies(pagination.limit, 0, searchTerm);
+        }, 500);
 
-      setShowModal(false);
-      resetForm();
-      fetchCompanies(pagination.limit, pagination.offset, searchTerm);
-    } catch (error) {
-      console.error("Error saving company:", error);
-      if (
-        error.response?.data?.errors &&
-        Array.isArray(error.response.data.errors)
-      ) {
-        error.response.data.errors.forEach((err) => {
-          toast.error(`${err.field}: ${err.message}`);
+        return () => clearTimeout(delayDebounce);
+    }, [searchTerm]);
+
+    const fetchCompanies = async (limit = 10, offset = 0, search = '') => {
+        setLoading(true);
+        console.log(`📡 Fetching companies: limit=${limit}, offset=${offset}, search="${search}"`);
+        
+        try {
+            const data = await companyService.getCompanies(limit, offset, search);
+            setCompanies(data.data || []);
+
+            const total = data.pagination?.total || 0;
+            const currentLimit = data.pagination?.limit || limit;
+            const currentOffset = data.pagination?.offset || offset;
+            const totalPages = Math.ceil(total / currentLimit) || 1;
+            const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+
+            setPagination({
+                total, limit: currentLimit, offset: currentOffset,
+                totalPages, currentPage,
+                hasNext: data.pagination?.hasNext || currentPage < totalPages,
+                hasPrevious: data.pagination?.hasPrevious || currentPage > 1
+            });
+            
+            console.log(`✅ Fetched ${data.data?.length || 0} companies`);
+        } catch (error) {
+            console.error('❌ Error fetching companies:', error);
+            toast.error(error.response?.data?.message || 'Failed to fetch companies');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            CompanyName: '', BusinessType: '', GstNumber: '', Address: '',
+            City: '', State: '', Country: 'India', PostalCode: '', Website: '',
+            OwnerName: '', Email: '', Phone: '', logo: null, IsActive: true, Flag: false
         });
-      } else {
-        toast.error(error.response?.data?.message || "Failed to save company");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+        setLogoPreview(null);
+        setErrors({});
+    };
 
-  // Handle Delete
-  const handleDelete = async () => {
-    if (!selectedCompany) return;
-    try {
-      await companyService.deleteCompany(selectedCompany.Id);
-      toast.success("Company deleted successfully!");
-      setShowDeleteModal(false);
-      setSelectedCompany(null);
-      fetchCompanies(pagination.limit, pagination.offset, searchTerm);
-    } catch (error) {
-      console.error("Error deleting company:", error);
-      toast.error(error.response?.data?.message || "Failed to delete company");
-    }
-  };
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    };
 
-  // Handle Toggle Active
-  const handleToggleActive = async (company) => {
-    try {
-      const response = await companyService.toggleActiveStatus(company.Id);
-      toast.success(response.message);
-      fetchCompanies(pagination.limit, pagination.offset, searchTerm);
-    } catch (error) {
-      console.error("Error toggling active:", error);
-      toast.error(error.response?.data?.message || "Failed to toggle status");
-    }
-  };
+    const handleLogoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('File size must be less than 5MB');
+                return;
+            }
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                toast.error('Only JPEG, PNG, and WEBP images allowed');
+                return;
+            }
+            setFormData(prev => ({ ...prev, logo: file }));
+            const reader = new FileReader();
+            reader.onloadend = () => setLogoPreview(reader.result);
+            reader.readAsDataURL(file);
+        }
+    };
 
-  // Handle Export
-  const handleExport = () => {
-    if (companies.length === 0) {
-      toast.error("No data to export");
-      return;
-    }
-    const csvContent = [
-      ["ID", "Company Name", "Email", "Phone", "City", "State", "GST Number"],
-      ...companies.map((c) => [
-        c.Id,
-        c.CompanyName,
-        c.Email,
-        c.Phone || "",
-        c.City || "",
-        c.State || "",
-        c.GstNumber || "",
-      ]),
-    ]
-      .map((row) => row.map((cell) => `"${cell}"`).join(","))
-      .join("\n");
+    const validateForm = () => {
+        const newErrors = {};
+        if (!formData.CompanyName.trim()) newErrors.CompanyName = 'Company name is required';
+        if (!formData.Email.trim()) {
+            newErrors.Email = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.Email)) {
+            newErrors.Email = 'Invalid email format';
+        }
+        if (formData.Phone && !/^[6-9]\d{9}$/.test(formData.Phone)) {
+            newErrors.Phone = 'Invalid phone number';
+        }
+        if (formData.GstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.GstNumber.toUpperCase())) {
+            newErrors.GstNumber = 'Invalid GST format';
+        }
+        if (formData.PostalCode && !/^\d{6}$/.test(formData.PostalCode)) {
+            newErrors.PostalCode = 'Invalid postal code';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `companies-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-    toast.success("Companies exported successfully!");
-  };
+    const openCreateModal = () => {
+        resetForm();
+        setModalMode('create');
+        setSelectedCompany(null);
+        setShowModal(true);
+    };
 
-  // ✅ Pagination Handlers
-  const handlePageChange = (newPage) => {
-    const newOffset = (newPage - 1) * pagination.limit;
-    fetchCompanies(pagination.limit, newOffset, searchTerm);
-  };
+    const openEditModal = (company) => {
+        setFormData({
+            CompanyName: company.CompanyName || '', BusinessType: company.BusinessType || '',
+            GstNumber: company.GstNumber || '', Address: company.Address || '',
+            City: company.City || '', State: company.State || '',
+            Country: company.Country || 'India', PostalCode: company.PostalCode || '',
+            Website: company.Website || '', OwnerName: company.OwnerName || '',
+            Email: company.Email || '', Phone: company.Phone || '',
+            logo: null, IsActive: company.IsActive, Flag: company.Flag
+        });
+        if (company.LogoUrl) {
+            setLogoPreview(`${process.env.REACT_APP_API_URL?.replace('/api', '')}${company.LogoUrl}`);
+        }
+        setModalMode('edit');
+        setSelectedCompany(company);
+        setShowModal(true);
+    };
 
-  const handleLimitChange = (newLimit) => {
-    fetchCompanies(newLimit, 0, searchTerm);
-  };
+    const openViewModal = (company) => {
+        setFormData({
+            CompanyName: company.CompanyName || '', BusinessType: company.BusinessType || '',
+            GstNumber: company.GstNumber || '', Address: company.Address || '',
+            City: company.City || '', State: company.State || '',
+            Country: company.Country || 'India', PostalCode: company.PostalCode || '',
+            Website: company.Website || '', OwnerName: company.OwnerName || '',
+            Email: company.Email || '', Phone: company.Phone || '',
+            logo: null, IsActive: company.IsActive, Flag: company.Flag
+        });
+        if (company.LogoUrl) {
+            setLogoPreview(`${process.env.REACT_APP_API_URL?.replace('/api', '')}${company.LogoUrl}`);
+        }
+        setModalMode('view');
+        setSelectedCompany(company);
+        setShowModal(true);
+    };
 
-  const isViewMode = modalMode === "view";
-  const modalTitle =
-    modalMode === "create"
-      ? "Create New Company"
-      : modalMode === "edit"
-      ? "Edit Company"
-      : "Company Details";
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (modalMode === 'view') return;
 
+        if (!validateForm()) {
+            toast.error('Please fix validation errors');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const submitData = new FormData();
+            Object.keys(formData).forEach(key => {
+                if (key === 'logo' && formData.logo) {
+                    submitData.append('logo', formData.logo);
+                } else if (key !== 'logo') {
+                    submitData.append(key, formData[key]);
+                }
+            });
+
+            if (modalMode === 'create') {
+                await companyService.createCompany(submitData);
+                toast.success('Company created successfully!');
+            } else if (modalMode === 'edit') {
+                await companyService.updateCompany(selectedCompany.Id, submitData);
+                toast.success('Company updated successfully!');
+            }
+
+            setShowModal(false);
+            resetForm();
+            fetchCompanies(pagination.limit, pagination.offset, searchTerm);
+        } catch (error) {
+            console.error('Error saving company:', error);
+            if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                error.response.data.errors.forEach(err => {
+                    toast.error(`${err.field}: ${err.message}`);
+                });
+            } else {
+                toast.error(error.response?.data?.message || 'Failed to save company');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!selectedCompany) return;
+        setLoading(true);
+        try {
+            await companyService.deleteCompany(selectedCompany.Id);
+            toast.success('Company deleted successfully!');
+            setShowDeleteModal(false);
+            setSelectedCompany(null);
+            fetchCompanies(pagination.limit, pagination.offset, searchTerm);
+        } catch (error) {
+            console.error('Error deleting company:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete company');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleToggleActive = async (company) => {
+        try {
+            const response = await companyService.toggleActiveStatus(company.Id);
+            toast.success(response.message);
+            fetchCompanies(pagination.limit, pagination.offset, searchTerm);
+        } catch (error) {
+            console.error('Error toggling active:', error);
+            toast.error(error.response?.data?.message || 'Failed to toggle status');
+        }
+    };
+
+    const handleExport = () => {
+        if (companies.length === 0) {
+            toast.error('No data to export');
+            return;
+        }
+        const csvContent = [
+            ['ID', 'Company Name', 'Email', 'Phone', 'City', 'State', 'GST Number'],
+            ...companies.map(c => [
+                c.Id, c.CompanyName, c.Email, c.Phone || '', 
+                c.City || '', c.State || '', c.GstNumber || ''
+            ])
+        ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `companies-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        toast.success('Companies exported successfully!');
+    };
+
+    const handlePageChange = (newPage) => {
+        const newOffset = (newPage - 1) * pagination.limit;
+        fetchCompanies(pagination.limit, newOffset, searchTerm);
+    };
+
+    const handleLimitChange = (newLimit) => {
+        fetchCompanies(newLimit, 0, searchTerm);
+    };
+
+    const isViewMode = modalMode === 'view';
+    const modalTitle = modalMode === 'create' ? 'Create New Company' :
+                      modalMode === 'edit' ? 'Edit Company' : 'Company Details';
+
+   
   return (
     <>
-      <Toaster position="top-right" />
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          success: {
+            duration: 3000,
+            style: { background: '#10B981', color: '#fff' }
+          },
+          error: {
+            duration: 4000,
+            style: { background: '#EF4444', color: '#fff' }
+          }
+        }}
+      />
 
       <section className="py-1 bg-blueGray-50 min-h-screen">
         <div className="w-full xl:w-10/12 px-4 mx-auto mt-6">
@@ -625,7 +553,7 @@ const Company = () => {
               </table>
             </div>
 
-            {/* ✅ Fixed Pagination */}
+            {/* Pagination */}
             {pagination.total > 0 && (
               <div className="px-6 py-4 border-t border-blueGray-200">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -664,7 +592,6 @@ const Company = () => {
                       Previous
                     </button>
 
-                    {/* Page Numbers */}
                     {Array.from(
                       { length: pagination.totalPages },
                       (_, i) => i + 1
@@ -1087,7 +1014,7 @@ const Company = () => {
 )}
 
 {/* Delete Confirm Modal */}
-{showDeleteModal && (
+{showDeleteModal && selectedCompany && (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
       <div className="flex justify-between items-center p-6 border-b">
@@ -1109,7 +1036,7 @@ const Company = () => {
       </div>
       <div className="p-6">
         <p className="text-blueGray-600">
-          Are you sure you want to delete "{selectedCompany?.CompanyName}"?
+          Are you sure you want to delete "<strong>{selectedCompany?.CompanyName}</strong>"?
           This action cannot be undone.
         </p>
       </div>
@@ -1125,15 +1052,34 @@ const Company = () => {
         </button>
         <button
           onClick={handleDelete}
-          className="bg-red-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition"
+          disabled={loading}
+          className="bg-red-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition disabled:opacity-50 flex items-center gap-2"
         >
-          Delete
+          {loading && (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+          )}
+          {loading ? "Deleting..." : "Delete"}
         </button>
       </div>
     </div>
   </div>
 )}
 
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+      `}</style>
     </>
   );
 };

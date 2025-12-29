@@ -2,14 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon,
     ArrowPathIcon, ArrowDownTrayIcon, EyeIcon, XMarkIcon,
-    BuildingStorefrontIcon, ExclamationTriangleIcon, MapPinIcon
+    UserGroupIcon, ExclamationTriangleIcon, PhoneIcon, EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import toast, { Toaster } from 'react-hot-toast';
-import * as warehouseService from '../../../services/warehouseService.js';
-import * as companyService from '../../../services/companyService.js';
+import { supplierService } from '../../../services/supplierService';
 
-const Warehouse = () => {
-    const [warehouses, setWarehouses] = useState([]);
+const SupplierManagement = () => {
+    const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [pagination, setPagination] = useState({
         total: 0, limit: 10, offset: 0, totalPages: 0, currentPage: 1,
@@ -17,108 +16,92 @@ const Warehouse = () => {
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({
-        companyId: '',
         isActive: '',
-        city: '',
-        state: '',
         sortBy: 'CreatedAt',
         sortOrder: 'DESC'
     });
 
-    const [companies, setCompanies] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState('create');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+    const [selectedSupplier, setSelectedSupplier] = useState(null);
 
     const [formData, setFormData] = useState({
         Name: '',
-        Location: '',
+        ContactPerson: '',
+        Email: '',
+        Phone: '',
         Address: '',
         City: '',
         State: '',
         Country: 'India',
-        PinCode: '',
-        ContactPerson: '',
-        ContactPhone: '',
-        ContactEmail: '',
-        ManagerId: '',
-        CompanyId: '',
-        Capacity: '',
-        CapacityUnit: 'sqft',
+        PostalCode: '',
         IsActive: true
     });
     const [errors, setErrors] = useState({});
 
-    // ✅ Track initial mount to prevent double fetch
     const isInitialMount = useRef(true);
     const isFiltersInitialMount = useRef(true);
 
-    // ✅ Fetch companies ONCE on mount
+    // Fetch suppliers ONCE on mount
     useEffect(() => {
-        console.log('🚀 Component mounted - Fetching companies');
-        fetchCompanies();
+        console.log('🚀 Initial supplier fetch');
+        fetchSuppliers(pagination.limit, 0, searchTerm);
     }, []);
 
-    // ✅ Fetch warehouses ONCE on mount
-    useEffect(() => {
-        console.log('🚀 Initial warehouse fetch');
-        fetchWarehouses(pagination.limit, 0, searchTerm);
-    }, []);
-
-    // ✅ Filters effect (but NOT on mount)
+    // Filters effect (but NOT on mount)
     useEffect(() => {
         if (isFiltersInitialMount.current) {
             isFiltersInitialMount.current = false;
-            return; // Skip on first render
+            return;
         }
-
         console.log('🔍 Filters changed:', filters);
-        fetchWarehouses(pagination.limit, 0, searchTerm);
+        fetchSuppliers(pagination.limit, 0, searchTerm);
     }, [filters]);
 
-    // ✅ Debounced search (but NOT on mount)
+    // Debounced search (but NOT on mount)
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
-            return; // Skip on first render
+            return;
         }
-
         console.log('🔍 Search term changed:', searchTerm);
         const delayDebounce = setTimeout(() => {
-            fetchWarehouses(pagination.limit, 0, searchTerm);
+            fetchSuppliers(pagination.limit, 0, searchTerm);
         }, 500);
-
         return () => clearTimeout(delayDebounce);
     }, [searchTerm]);
 
-    const fetchCompanies = async () => {
-        try {
-            const response = await companyService.getActiveCompanies();
-            setCompanies(response.data || []);
-            console.log('✅ Companies loaded');
-        } catch (error) {
-            console.error('❌ Error fetching companies:', error);
-            toast.error('Failed to load companies');
-        }
-    };
-
-    const fetchWarehouses = async (limit = 10, offset = 0, search = '') => {
+    const fetchSuppliers = async (limit = 10, offset = 0, search = '') => {
         setLoading(true);
-        console.log(`📡 Fetching warehouses: limit=${limit}, offset=${offset}, search="${search}"`);
+        console.log(`📡 Fetching suppliers: limit=${limit}, offset=${offset}, search="${search}"`);
         
         try {
-            const data = await warehouseService.getWarehouses(limit, offset, search, filters);
-            setWarehouses(data.data || []);
-
-            if (data.pagination) {
-                setPagination(data.pagination);
+            const response = await supplierService.getAllSuppliers({
+                limit,
+                offset,
+                search,
+                ...filters
+            });
+            
+            setSuppliers(response.data || []);
+            
+            if (response.pagination) {
+                const totalPages = Math.ceil(response.pagination.total / response.pagination.limit);
+                const currentPage = Math.floor(response.pagination.offset / response.pagination.limit) + 1;
+                setPagination({
+                    ...response.pagination,
+                    totalPages,
+                    currentPage,
+                    hasNext: currentPage < totalPages,
+                    hasPrevious: currentPage > 1
+                });
             }
             
-            console.log(`✅ Fetched ${data.data?.length || 0} warehouses`);
+            console.log(`✅ Fetched ${response.data?.length || 0} suppliers`);
         } catch (error) {
-            console.error('❌ Error fetching warehouses:', error);
-            toast.error(error.message || 'Failed to fetch warehouses');
+            console.error('❌ Error fetching suppliers:', error);
+            toast.error(error.message || 'Failed to fetch suppliers');
         } finally {
             setLoading(false);
         }
@@ -127,19 +110,14 @@ const Warehouse = () => {
     const resetForm = () => {
         setFormData({
             Name: '',
-            Location: '',
+            ContactPerson: '',
+            Email: '',
+            Phone: '',
             Address: '',
             City: '',
             State: '',
             Country: 'India',
-            PinCode: '',
-            ContactPerson: '',
-            ContactPhone: '',
-            ContactEmail: '',
-            ManagerId: '',
-            CompanyId: '',
-            Capacity: '',
-            CapacityUnit: 'sqft',
+            PostalCode: '',
             IsActive: true
         });
         setErrors({});
@@ -158,13 +136,12 @@ const Warehouse = () => {
 
     const validateForm = () => {
         const newErrors = {};
-        if (!formData.Name.trim()) newErrors.Name = 'Warehouse name is required';
-        if (!formData.CompanyId) newErrors.CompanyId = 'Company is required';
-        if (formData.ContactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ContactEmail)) {
-            newErrors.ContactEmail = 'Invalid email format';
+        if (!formData.Name.trim()) newErrors.Name = 'Supplier name is required';
+        if (formData.Email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.Email)) {
+            newErrors.Email = 'Invalid email format';
         }
-        if (formData.ContactPhone && !/^\d{10}$/.test(formData.ContactPhone.replace(/\D/g, ''))) {
-            newErrors.ContactPhone = 'Phone must be 10 digits';
+        if (formData.Phone && !/^\d{10}$/.test(formData.Phone.replace(/\D/g, ''))) {
+            newErrors.Phone = 'Phone must be 10 digits';
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -173,53 +150,43 @@ const Warehouse = () => {
     const openCreateModal = () => {
         resetForm();
         setModalMode('create');
-        setSelectedWarehouse(null);
+        setSelectedSupplier(null);
         setShowModal(true);
     };
 
-    const openEditModal = (warehouse) => {
+    const openEditModal = (supplier) => {
         setFormData({
-            Name: warehouse.Name || '',
-            Location: warehouse.Location || '',
-            Address: warehouse.Address || '',
-            City: warehouse.City || '',
-            State: warehouse.State || '',
-            Country: warehouse.Country || 'India',
-            PinCode: warehouse.PinCode || '',
-            ContactPerson: warehouse.ContactPerson || '',
-            ContactPhone: warehouse.ContactPhone || '',
-            ContactEmail: warehouse.ContactEmail || '',
-            ManagerId: warehouse.ManagerId || '',
-            CompanyId: warehouse.CompanyId || '',
-            Capacity: warehouse.Capacity || '',
-            CapacityUnit: warehouse.CapacityUnit || 'sqft',
-            IsActive: warehouse.IsActive
+            Name: supplier.Name || '',
+            ContactPerson: supplier.ContactPerson || '',
+            Email: supplier.Email || '',
+            Phone: supplier.Phone || '',
+            Address: supplier.Address || '',
+            City: supplier.City || '',
+            State: supplier.State || '',
+            Country: supplier.Country || 'India',
+            PostalCode: supplier.PostalCode || '',
+            IsActive: supplier.IsActive
         });
         setModalMode('edit');
-        setSelectedWarehouse(warehouse);
+        setSelectedSupplier(supplier);
         setShowModal(true);
     };
 
-    const openViewModal = (warehouse) => {
+    const openViewModal = (supplier) => {
         setFormData({
-            Name: warehouse.Name || '',
-            Location: warehouse.Location || '',
-            Address: warehouse.Address || '',
-            City: warehouse.City || '',
-            State: warehouse.State || '',
-            Country: warehouse.Country || 'India',
-            PinCode: warehouse.PinCode || '',
-            ContactPerson: warehouse.ContactPerson || '',
-            ContactPhone: warehouse.ContactPhone || '',
-            ContactEmail: warehouse.ContactEmail || '',
-            ManagerId: warehouse.ManagerId || '',
-            CompanyId: warehouse.CompanyId || '',
-            Capacity: warehouse.Capacity || '',
-            CapacityUnit: warehouse.CapacityUnit || 'sqft',
-            IsActive: warehouse.IsActive
+            Name: supplier.Name || '',
+            ContactPerson: supplier.ContactPerson || '',
+            Email: supplier.Email || '',
+            Phone: supplier.Phone || '',
+            Address: supplier.Address || '',
+            City: supplier.City || '',
+            State: supplier.State || '',
+            Country: supplier.Country || 'India',
+            PostalCode: supplier.PostalCode || '',
+            IsActive: supplier.IsActive
         });
         setModalMode('view');
-        setSelectedWarehouse(warehouse);
+        setSelectedSupplier(supplier);
         setShowModal(true);
     };
 
@@ -235,69 +202,57 @@ const Warehouse = () => {
         setLoading(true);
         try {
             if (modalMode === 'create') {
-                await warehouseService.createWarehouse(formData);
-                toast.success('Warehouse created successfully!');
+                await supplierService.createSupplier(formData);
+                toast.success('Supplier created successfully!');
             } else if (modalMode === 'edit') {
-                await warehouseService.updateWarehouse(selectedWarehouse.Id, formData);
-                toast.success('Warehouse updated successfully!');
+                await supplierService.updateSupplier(selectedSupplier.Id, formData);
+                toast.success('Supplier updated successfully!');
             }
 
             setShowModal(false);
             resetForm();
-            fetchWarehouses(pagination.limit, pagination.offset, searchTerm);
+            fetchSuppliers(pagination.limit, pagination.offset, searchTerm);
         } catch (error) {
-            console.error('Error saving warehouse:', error);
-            toast.error(error.message || 'Failed to save warehouse');
+            console.error('Error saving supplier:', error);
+            toast.error(error.message || 'Failed to save supplier');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!selectedWarehouse) return;
+        if (!selectedSupplier) return;
         setLoading(true);
         try {
-            await warehouseService.deleteWarehouse(selectedWarehouse.Id);
-            toast.success('Warehouse deleted successfully!');
+            await supplierService.softDeleteSupplier(selectedSupplier.Id);
+            toast.success('Supplier deleted successfully!');
             setShowDeleteModal(false);
-            setSelectedWarehouse(null);
-            fetchWarehouses(pagination.limit, pagination.offset, searchTerm);
+            setSelectedSupplier(null);
+            fetchSuppliers(pagination.limit, pagination.offset, searchTerm);
         } catch (error) {
-            console.error('Error deleting warehouse:', error);
-            toast.error(error.message || 'Failed to delete warehouse');
+            console.error('Error deleting supplier:', error);
+            toast.error(error.message || 'Failed to delete supplier');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleToggleActive = async (warehouse) => {
-        try {
-            const response = await warehouseService.toggleActiveStatus(warehouse.Id);
-            toast.success(response.message);
-            fetchWarehouses(pagination.limit, pagination.offset, searchTerm);
-        } catch (error) {
-            console.error('Error toggling status:', error);
-            toast.error(error.message || 'Failed to toggle status');
-        }
-    };
-
     const handleExport = () => {
-        if (warehouses.length === 0) {
+        if (suppliers.length === 0) {
             toast.error('No data to export');
             return;
         }
         const csvContent = [
-            ['ID', 'Code', 'Name', 'Location', 'City', 'State', 'Company', 'Manager', 'Status'],
-            ...warehouses.map(w => [
-                w.Id,
-                w.WarehouseCode || '',
-                w.Name,
-                w.Location || '',
-                w.City || '',
-                w.State || '',
-                w.CompanyName || '',
-                w.ManagerName || '',
-                w.IsActive ? 'Active' : 'Inactive'
+            ['ID', 'Name', 'Contact Person', 'Email', 'Phone', 'City', 'State', 'Status'],
+            ...suppliers.map(s => [
+                s.Id,
+                s.Name,
+                s.ContactPerson || '',
+                s.Email || '',
+                s.Phone || '',
+                s.City || '',
+                s.State || '',
+                s.IsActive ? 'Active' : 'Inactive'
             ])
         ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 
@@ -305,25 +260,25 @@ const Warehouse = () => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `warehouses-${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `suppliers-${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        toast.success('Warehouses exported successfully!');
+        toast.success('Suppliers exported successfully!');
     };
 
     const handlePageChange = (newPage) => {
         const newOffset = (newPage - 1) * pagination.limit;
-        fetchWarehouses(pagination.limit, newOffset, searchTerm);
+        fetchSuppliers(pagination.limit, newOffset, searchTerm);
     };
 
     const handleLimitChange = (newLimit) => {
-        fetchWarehouses(newLimit, 0, searchTerm);
+        fetchSuppliers(newLimit, 0, searchTerm);
     };
 
     const isViewMode = modalMode === 'view';
-    const modalTitle = modalMode === 'create' ? 'Create New Warehouse' : modalMode === 'edit' ? 'Edit Warehouse' : 'Warehouse Details';
+    const modalTitle = modalMode === 'create' ? 'Create New Supplier' : modalMode === 'edit' ? 'Edit Supplier' : 'Supplier Details';
 
     return (
         <>
@@ -340,10 +295,10 @@ const Warehouse = () => {
                         <div className="rounded-t bg-white mb-0 px-6 py-6">
                             <div className="text-center flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div className="flex items-center gap-3">
-                                    <BuildingStorefrontIcon className="h-8 w-8 text-blue-500" />
+                                    <UserGroupIcon className="h-8 w-8 text-blue-500" />
                                     <div className="text-left">
-                                        <h6 className="text-blueGray-700 text-2xl font-bold">Warehouse Management</h6>
-                                        <p className="text-sm text-blueGray-500">Manage warehouses & locations</p>
+                                        <h6 className="text-blueGray-700 text-2xl font-bold">Supplier Management</h6>
+                                        <p className="text-sm text-blueGray-500">Manage suppliers & contacts</p>
                                     </div>
                                     <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
                                         {pagination.total} Total
@@ -351,7 +306,7 @@ const Warehouse = () => {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 justify-center">
-                                    <button onClick={() => fetchWarehouses(pagination.limit, pagination.offset, searchTerm)}
+                                    <button onClick={() => fetchSuppliers(pagination.limit, pagination.offset, searchTerm)}
                                         className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md flex items-center gap-2 transition"
                                         disabled={loading}>
                                         <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -360,7 +315,7 @@ const Warehouse = () => {
 
                                     <button onClick={handleExport}
                                         className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md flex items-center gap-2 transition"
-                                        disabled={warehouses.length === 0}>
+                                        disabled={suppliers.length === 0}>
                                         <ArrowDownTrayIcon className="h-4 w-4" />
                                         Export
                                     </button>
@@ -368,7 +323,7 @@ const Warehouse = () => {
                                     <button onClick={openCreateModal}
                                         className="bg-blue-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md flex items-center gap-2 transition">
                                         <PlusIcon className="h-4 w-4" />
-                                        Add Warehouse
+                                        Add Supplier
                                     </button>
                                 </div>
                             </div>
@@ -376,30 +331,18 @@ const Warehouse = () => {
 
                         {/* Filters */}
                         <div className="px-6 pb-4">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                                <select value={filters.companyId} onChange={(e) => setFilters({ ...filters, companyId: e.target.value })}
-                                    className="border-0 px-3 py-2 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring">
-                                    <option value="">All Companies</option>
-                                    {companies.map(c => (
-                                        <option key={c.Id} value={c.Id}>{c.CompanyName}</option>
-                                    ))}
-                                </select>
-
-                                <input type="text" placeholder="City"
-                                    value={filters.city}
-                                    onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-                                    className="border-0 px-3 py-2 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring" />
-
-                                <input type="text" placeholder="State"
-                                    value={filters.state}
-                                    onChange={(e) => setFilters({ ...filters, state: e.target.value })}
-                                    className="border-0 px-3 py-2 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring" />
-
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <select value={filters.isActive} onChange={(e) => setFilters({ ...filters, isActive: e.target.value })}
                                     className="border-0 px-3 py-2 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring">
                                     <option value="">All Status</option>
                                     <option value="true">Active</option>
                                     <option value="false">Inactive</option>
+                                </select>
+
+                                <select value={filters.sortBy} onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                                    className="border-0 px-3 py-2 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring">
+                                    <option value="CreatedAt">Sort by Date</option>
+                                    <option value="Name">Sort by Name</option>
                                 </select>
                             </div>
 
@@ -410,7 +353,7 @@ const Warehouse = () => {
                                 </div>
                                 <input type="text"
                                     className="border-0 px-3 py-3 pl-10 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full"
-                                    placeholder="Search by name, code, location, city..."
+                                    placeholder="Search by name, contact person, email..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)} />
                                 {searchTerm && (
@@ -426,11 +369,10 @@ const Warehouse = () => {
                             <table className="items-center w-full bg-transparent border-collapse">
                                 <thead>
                                     <tr>
-                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Warehouse</th>
-                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Code</th>
+                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Supplier</th>
+                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Contact Person</th>
+                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Contact Info</th>
                                         <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Location</th>
-                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Company</th>
-                                        <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-left bg-blueGray-50 text-blueGray-500 border-blueGray-100">Manager</th>
                                         <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-center bg-blueGray-50 text-blueGray-500 border-blueGray-100">Status</th>
                                         <th className="px-6 align-middle border border-solid py-3 text-xs uppercase border-l-0 border-r-0 whitespace-nowrap font-semibold text-center bg-blueGray-50 text-blueGray-500 border-blueGray-100">Actions</th>
                                     </tr>
@@ -438,69 +380,75 @@ const Warehouse = () => {
                                 <tbody>
                                     {loading ? (
                                         <tr>
-                                            <td colSpan="7" className="text-center py-8">
+                                            <td colSpan="6" className="text-center py-8">
                                                 <div className="flex justify-center items-center">
                                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                                                     <span className="ml-2 text-blueGray-500">Loading...</span>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ) : warehouses.length === 0 ? (
+                                    ) : suppliers.length === 0 ? (
                                         <tr>
-                                            <td colSpan="7" className="text-center py-8">
-                                                <BuildingStorefrontIcon className="h-12 w-12 mx-auto mb-2 text-blueGray-300" />
-                                                <p className="text-lg font-semibold text-blueGray-500">No warehouses found</p>
+                                            <td colSpan="6" className="text-center py-8">
+                                                <UserGroupIcon className="h-12 w-12 mx-auto mb-2 text-blueGray-300" />
+                                                <p className="text-lg font-semibold text-blueGray-500">No suppliers found</p>
                                                 <p className="text-sm text-blueGray-400">
-                                                    {searchTerm ? 'Try adjusting your search' : 'Click "Add Warehouse" to create one'}
+                                                    {searchTerm ? 'Try adjusting your search' : 'Click "Add Supplier" to create one'}
                                                 </p>
                                             </td>
                                         </tr>
                                     ) : (
-                                        warehouses.map((warehouse) => (
-                                            <tr key={warehouse.Id} className="hover:bg-blueGray-50 transition-colors">
+                                        suppliers.map((supplier) => (
+                                            <tr key={supplier.Id} className="hover:bg-blueGray-50 transition-colors">
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 rounded bg-blue-100 flex items-center justify-center">
-                                                            <BuildingStorefrontIcon className="h-6 w-6 text-blue-500" />
+                                                            <UserGroupIcon className="h-6 w-6 text-blue-500" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-semibold text-blueGray-700">{warehouse.Name}</p>
-                                                            {warehouse.City && (
-                                                                <p className="text-xs text-blueGray-500 flex items-center gap-1">
-                                                                    <MapPinIcon className="h-3 w-3" />
-                                                                    {warehouse.City}, {warehouse.State}
-                                                                </p>
-                                                            )}
+                                                            <p className="font-semibold text-blueGray-700">{supplier.Name}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                                    <span className="font-mono text-blueGray-700">{warehouse.WarehouseCode}</span>
+                                                    <span className="text-blueGray-700">{supplier.ContactPerson || '-'}</span>
                                                 </td>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                                    <span className="text-blueGray-700">{warehouse.Location || '-'}</span>
+                                                    <div className="flex flex-col gap-1">
+                                                        {supplier.Email && (
+                                                            <p className="text-blueGray-700 flex items-center gap-1">
+                                                                <EnvelopeIcon className="h-3 w-3" />
+                                                                {supplier.Email}
+                                                            </p>
+                                                        )}
+                                                        {supplier.Phone && (
+                                                            <p className="text-blueGray-700 flex items-center gap-1">
+                                                                <PhoneIcon className="h-3 w-3" />
+                                                                {supplier.Phone}
+                                                            </p>
+                                                        )}
+                                                        {!supplier.Email && !supplier.Phone && <span>-</span>}
+                                                    </div>
                                                 </td>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                                    <span className="text-blueGray-700">{warehouse.CompanyName || '-'}</span>
-                                                </td>
-                                                <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
-                                                    <span className="text-blueGray-700">{warehouse.ManagerName || 'Not Assigned'}</span>
+                                                    <span className="text-blueGray-700">
+                                                        {supplier.City && supplier.State ? `${supplier.City}, ${supplier.State}` : supplier.City || supplier.State || '-'}
+                                                    </span>
                                                 </td>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4 text-center">
-                                                    <button onClick={() => handleToggleActive(warehouse)}
-                                                        className={`${warehouse.IsActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs font-semibold px-2.5 py-1 rounded`}>
-                                                        {warehouse.IsActive ? 'Active' : 'Inactive'}
-                                                    </button>
+                                                    <span className={`${supplier.IsActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} text-xs font-semibold px-2.5 py-1 rounded`}>
+                                                        {supplier.IsActive ? 'Active' : 'Inactive'}
+                                                    </span>
                                                 </td>
                                                 <td className="border-t-0 px-6 align-middle border-l-0 border-r-0 text-xs whitespace-nowrap p-4">
                                                     <div className="flex gap-2 justify-center">
-                                                        <button onClick={() => openViewModal(warehouse)} className="text-blue-500 hover:text-blue-700" title="View">
+                                                        <button onClick={() => openViewModal(supplier)} className="text-blue-500 hover:text-blue-700" title="View">
                                                             <EyeIcon className="h-5 w-5" />
                                                         </button>
-                                                        <button onClick={() => openEditModal(warehouse)} className="text-green-500 hover:text-green-700" title="Edit">
+                                                        <button onClick={() => openEditModal(supplier)} className="text-green-500 hover:text-green-700" title="Edit">
                                                             <PencilIcon className="h-5 w-5" />
                                                         </button>
-                                                        <button onClick={() => { setSelectedWarehouse(warehouse); setShowDeleteModal(true); }}
+                                                        <button onClick={() => { setSelectedSupplier(supplier); setShowDeleteModal(true); }}
                                                             className="text-red-500 hover:text-red-700" title="Delete">
                                                             <TrashIcon className="h-5 w-5" />
                                                         </button>
@@ -527,7 +475,7 @@ const Warehouse = () => {
                                             <option value="50">50</option>
                                         </select>
                                         <span className="text-sm text-blueGray-600">
-                                            Showing {pagination.offset + 1} to {Math.min(pagination.offset + warehouses.length, pagination.total)} of {pagination.total}
+                                            Showing {pagination.offset + 1} to {Math.min(pagination.offset + suppliers.length, pagination.total)} of {pagination.total}
                                         </span>
                                     </div>
 
@@ -571,7 +519,7 @@ const Warehouse = () => {
                         <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl my-8">
                             <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
                                 <div className="flex items-center gap-2">
-                                    <BuildingStorefrontIcon className="h-6 w-6 text-blue-500" />
+                                    <UserGroupIcon className="h-6 w-6 text-blue-500" />
                                     <h3 className="text-xl font-bold text-blueGray-700">{modalTitle}</h3>
                                 </div>
                                 <button onClick={() => { setShowModal(false); resetForm(); }} className="text-gray-400 hover:text-gray-600 transition">
@@ -583,41 +531,45 @@ const Warehouse = () => {
                                 <div className="p-6 max-h-[calc(100vh-250px)] overflow-y-auto">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                                        {/* Warehouse Name */}
+                                        {/* Supplier Name */}
                                         <div className="col-span-2">
                                             <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                                                Warehouse Name <span className="text-red-500">*</span>
+                                                Supplier Name <span className="text-red-500">*</span>
                                             </label>
                                             <input type="text" name="Name" value={formData.Name} onChange={handleChange}
                                                 disabled={isViewMode}
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.Name ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="Enter warehouse name" />
+                                                placeholder="Enter supplier name" />
                                             {errors.Name && <p className="text-red-500 text-xs mt-1">{errors.Name}</p>}
                                         </div>
 
-                                        {/* Company */}
+                                        {/* Contact Person */}
                                         <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                                                Company <span className="text-red-500">*</span>
-                                            </label>
-                                            <select name="CompanyId" value={formData.CompanyId} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                className={`border-0 px-3 py-3 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.CompanyId ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}>
-                                                <option value="">Select Company</option>
-                                                {companies.map(c => (
-                                                    <option key={c.Id} value={c.Id}>{c.CompanyName}</option>
-                                                ))}
-                                            </select>
-                                            {errors.CompanyId && <p className="text-red-500 text-xs mt-1">{errors.CompanyId}</p>}
-                                        </div>
-
-                                        {/* Location */}
-                                        <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Location</label>
-                                            <input type="text" name="Location" value={formData.Location} onChange={handleChange}
+                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Contact Person</label>
+                                            <input type="text" name="ContactPerson" value={formData.ContactPerson} onChange={handleChange}
                                                 disabled={isViewMode}
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="e.g., Zone A, Building 2" />
+                                                placeholder="Contact person name" />
+                                        </div>
+
+                                        {/* Email */}
+                                        <div>
+                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Email</label>
+                                            <input type="email" name="Email" value={formData.Email} onChange={handleChange}
+                                                disabled={isViewMode}
+                                                className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.Email ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}
+                                                placeholder="Email address" />
+                                            {errors.Email && <p className="text-red-500 text-xs mt-1">{errors.Email}</p>}
+                                        </div>
+
+                                        {/* Phone */}
+                                        <div>
+                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Phone</label>
+                                            <input type="tel" name="Phone" value={formData.Phone} onChange={handleChange}
+                                                disabled={isViewMode}
+                                                className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.Phone ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}
+                                                placeholder="Phone number" />
+                                            {errors.Phone && <p className="text-red-500 text-xs mt-1">{errors.Phone}</p>}
                                         </div>
 
                                         {/* Address */}
@@ -656,64 +608,13 @@ const Warehouse = () => {
                                                 placeholder="Country" />
                                         </div>
 
-                                        {/* Pin Code */}
+                                        {/* Postal Code */}
                                         <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Pin Code</label>
-                                            <input type="text" name="PinCode" value={formData.PinCode} onChange={handleChange}
+                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Postal Code</label>
+                                            <input type="text" name="PostalCode" value={formData.PostalCode} onChange={handleChange}
                                                 disabled={isViewMode}
                                                 className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="Pin Code" />
-                                        </div>
-
-                                        {/* Contact Person */}
-                                        <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Contact Person</label>
-                                            <input type="text" name="ContactPerson" value={formData.ContactPerson} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="Contact person name" />
-                                        </div>
-
-                                        {/* Contact Phone */}
-                                        <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Contact Phone</label>
-                                            <input type="tel" name="ContactPhone" value={formData.ContactPhone} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.ContactPhone ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="Contact phone" />
-                                            {errors.ContactPhone && <p className="text-red-500 text-xs mt-1">{errors.ContactPhone}</p>}
-                                        </div>
-
-                                        {/* Contact Email */}
-                                        <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Contact Email</label>
-                                            <input type="email" name="ContactEmail" value={formData.ContactEmail} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${errors.ContactEmail ? 'ring-2 ring-red-500' : ''} ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="Contact email" />
-                                            {errors.ContactEmail && <p className="text-red-500 text-xs mt-1">{errors.ContactEmail}</p>}
-                                        </div>
-
-                                        {/* Capacity */}
-                                        <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Capacity</label>
-                                            <input type="number" step="0.01" name="Capacity" value={formData.Capacity} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}
-                                                placeholder="Capacity" />
-                                        </div>
-
-                                        {/* Capacity Unit */}
-                                        <div>
-                                            <label className="block text-blueGray-600 text-sm font-bold mb-2">Capacity Unit</label>
-                                            <select name="CapacityUnit" value={formData.CapacityUnit} onChange={handleChange}
-                                                disabled={isViewMode}
-                                                className={`border-0 px-3 py-3 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${isViewMode ? 'bg-gray-100' : ''}`}>
-                                                <option value="sqft">Square Feet (sqft)</option>
-                                                <option value="sqm">Square Meter (sqm)</option>
-                                                <option value="cbm">Cubic Meter (cbm)</option>
-                                                <option value="pallets">Pallets</option>
-                                            </select>
+                                                placeholder="Postal code" />
                                         </div>
 
                                         {/* Active Status */}
@@ -755,17 +656,17 @@ const Warehouse = () => {
                         <div className="flex justify-between items-center p-6 border-b">
                             <div className="flex items-center gap-2">
                                 <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
-                                <h3 className="text-xl font-bold text-blueGray-700">Delete Warehouse</h3>
+                                <h3 className="text-xl font-bold text-blueGray-700">Delete Supplier</h3>
                             </div>
-                            <button onClick={() => { setShowDeleteModal(false); setSelectedWarehouse(null); }} className="text-gray-400 hover:text-gray-600 transition">
+                            <button onClick={() => { setShowDeleteModal(false); setSelectedSupplier(null); }} className="text-gray-400 hover:text-gray-600 transition">
                                 <XMarkIcon className="h-6 w-6" />
                             </button>
                         </div>
                         <div className="p-6">
-                            <p className="text-blueGray-600">Are you sure you want to delete "{selectedWarehouse?.Name}"? This action cannot be undone.</p>
+                            <p className="text-blueGray-600">Are you sure you want to delete "{selectedSupplier?.Name}"? This action cannot be undone.</p>
                         </div>
                         <div className="flex justify-end gap-3 p-6 border-t">
-                            <button onClick={() => { setShowDeleteModal(false); setSelectedWarehouse(null); }}
+                            <button onClick={() => { setShowDeleteModal(false); setSelectedSupplier(null); }}
                                 className="bg-gray-500 text-white font-bold uppercase text-xs px-6 py-3 rounded shadow hover:shadow-md transition">
                                 Cancel
                             </button>
@@ -782,4 +683,4 @@ const Warehouse = () => {
     );
 };
 
-export default Warehouse;
+export default SupplierManagement;

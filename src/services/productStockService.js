@@ -1,6 +1,6 @@
-// src/services/productService.js
+// src/services/productStockService.js
 import axiosInstance from '../Components/AdminSite/utils/axiosInstance';
-import { PRODUCTS } from '../Components/Endpoint/Endpoint';
+import { PRODUCT_STOCK } from '../Components/Endpoint/Endpoint';
 
 // Build URL with query parameters
 const buildUrl = (endpoint, params = {}) => {
@@ -13,117 +13,124 @@ const buildUrl = (endpoint, params = {}) => {
     return queryString ? `${endpoint}?${queryString}` : endpoint;
 };
 
-// Get all products with filters
-export const getAllProducts = async (limit = 10, offset = 0, search = '', filters = {}) => {
+// ✅ Get all product stocks with filters - THIS WAS MISSING
+export const getAllProductStocks = async (limit = 10, offset = 0, search = '', filters = {}) => {
     try {
         const params = { limit, offset, search, ...filters };
-        const url = buildUrl(PRODUCTS.BASE, params);
+        const url = buildUrl(PRODUCT_STOCK.BASE || '/product-stock', params);
         const response = await axiosInstance.get(url);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to fetch products' };
+        throw error.response?.data || { message: 'Failed to fetch product stocks' };
     }
 };
 
-// ✅ Get active products (for dropdowns)
-export const getActiveProducts = async (companyId = null) => {
+// Get product stock by ID
+export const getProductStockById = async (id) => {
     try {
-        const params = companyId ? { companyId } : {};
-        const url = buildUrl(PRODUCTS.ACTIVE, params);
-        const response = await axiosInstance.get(url);
+        const endpoint = PRODUCT_STOCK.BY_ID ? PRODUCT_STOCK.BY_ID(id) : `/product-stock/${id}`;
+        const response = await axiosInstance.get(endpoint);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to fetch active products' };
+        throw error.response?.data || { message: 'Failed to fetch product stock' };
     }
 };
 
-// Get product by ID
-export const getProductById = async (id) => {
+// Get stock by product
+export const getStockByProduct = async (productId) => {
     try {
-        const response = await axiosInstance.get(PRODUCTS.BY_ID(id));
+        const endpoint = PRODUCT_STOCK.BY_PRODUCT ? PRODUCT_STOCK.BY_PRODUCT(productId) : `/product-stock/product/${productId}`;
+        const response = await axiosInstance.get(endpoint);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to fetch product' };
+        throw error.response?.data || { message: 'Failed to fetch stock by product' };
     }
 };
 
-// Get products by company
-export const getProductsByCompany = async (companyId, includeInactive = false) => {
+// Get stock by warehouse
+export const getStockByWarehouse = async (warehouseId) => {
     try {
-        const url = buildUrl(PRODUCTS.BY_COMPANY(companyId), { includeInactive });
-        const response = await axiosInstance.get(url);
+        const endpoint = PRODUCT_STOCK.BY_WAREHOUSE ? PRODUCT_STOCK.BY_WAREHOUSE(warehouseId) : `/product-stock/warehouse/${warehouseId}`;
+        const response = await axiosInstance.get(endpoint);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to fetch products by company' };
+        throw error.response?.data || { message: 'Failed to fetch stock by warehouse' };
     }
 };
 
-// Get products by category
-export const getProductsByCategory = async (categoryId) => {
+// Get low stock items
+export const getLowStockItems = async () => {
     try {
-        const response = await axiosInstance.get(PRODUCTS.BY_CATEGORY(categoryId));
+        const endpoint = PRODUCT_STOCK.LOW_STOCK || '/product-stock/low-stock';
+        const response = await axiosInstance.get(endpoint);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to fetch products by category' };
+        throw error.response?.data || { message: 'Failed to fetch low stock items' };
     }
 };
 
-// Create product
-export const createProduct = async (productData) => {
+// Create product stock
+export const createProductStock = async (stockData) => {
     try {
-        const response = await axiosInstance.post(PRODUCTS.BASE, productData);
+        const endpoint = PRODUCT_STOCK.BASE || '/product-stock';
+        const response = await axiosInstance.post(endpoint, stockData);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to create product' };
+        throw error.response?.data || { message: 'Failed to create product stock' };
     }
 };
 
-// Update product
-export const updateProduct = async (id, productData) => {
+// Update product stock
+export const updateProductStock = async (id, stockData) => {
     try {
-        const response = await axiosInstance.put(PRODUCTS.BY_ID(id), productData);
+        const endpoint = PRODUCT_STOCK.BY_ID ? PRODUCT_STOCK.BY_ID(id) : `/product-stock/${id}`;
+        const response = await axiosInstance.put(endpoint, stockData);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to update product' };
+        throw error.response?.data || { message: 'Failed to update product stock' };
     }
 };
 
-// Toggle active status
-export const toggleActiveStatus = async (id) => {
+// Adjust stock quantity
+export const adjustStockQuantity = async (id, adjustment, reason) => {
     try {
-        const response = await axiosInstance.patch(PRODUCTS.TOGGLE_STATUS(id));
+        const endpoint = PRODUCT_STOCK.ADJUST ? PRODUCT_STOCK.ADJUST(id) : `/product-stock/${id}/adjust`;
+        const response = await axiosInstance.post(endpoint, { adjustment, reason });
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to toggle status' };
+        throw error.response?.data || { message: 'Failed to adjust stock quantity' };
     }
 };
 
-// Soft delete product
-export const softDeleteProduct = async (id) => {
+// Transfer stock between warehouses
+export const transferStock = async (transferData) => {
     try {
-        const response = await axiosInstance.delete(PRODUCTS.SOFT_DELETE(id));
+        const endpoint = PRODUCT_STOCK.TRANSFER || '/product-stock/transfer';
+        const response = await axiosInstance.post(endpoint, transferData);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to deactivate product' };
+        throw error.response?.data || { message: 'Failed to transfer stock' };
     }
 };
 
-// Hard delete product
-export const deleteProduct = async (id) => {
+// Soft delete (deactivate)
+export const softDeleteProductStock = async (id) => {
     try {
-        const response = await axiosInstance.delete(PRODUCTS.HARD_DELETE(id));
+        const endpoint = PRODUCT_STOCK.SOFT_DELETE ? PRODUCT_STOCK.SOFT_DELETE(id) : `/product-stock/${id}/soft`;
+        const response = await axiosInstance.patch(endpoint);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to delete product' };
+        throw error.response?.data || { message: 'Failed to deactivate product stock' };
     }
 };
 
-// Bulk import products
-export const bulkImportProducts = async (products) => {
+// Hard delete (permanent)
+export const deleteProductStock = async (id) => {
     try {
-        const response = await axiosInstance.post(PRODUCTS.BULK_IMPORT, { products });
+        const endpoint = PRODUCT_STOCK.HARD_DELETE ? PRODUCT_STOCK.HARD_DELETE(id) : `/product-stock/${id}/hard`;
+        const response = await axiosInstance.delete(endpoint);
         return response.data;
     } catch (error) {
-        throw error.response?.data || { message: 'Failed to import products' };
+        throw error.response?.data || { message: 'Failed to delete product stock' };
     }
 };

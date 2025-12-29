@@ -448,6 +448,12 @@ export default function NavigationBar() {
         { name: "Product", href: "/Admin/Product" },
         { name: "Warehouse", href: "/Admin/Warehouse" },
         { name: "ProductStock", href: "/Admin/ProductStock" },
+        { name: "StockMovements", href: "/Admin/StockMovements" },
+        { name: "Supplier", href: "/Admin/Supplier" },
+        { name: "PurchaseOrder", href: "/Admin/PurchaseOrder" },
+        { name: "PurchaseOrderIteam", href: "/Admin/PurchaseOrderIteam" },
+
+
 
 
       ],

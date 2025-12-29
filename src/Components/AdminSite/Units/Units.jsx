@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -12,7 +12,7 @@ import {
   Square3Stack3DIcon,
   DocumentPlusIcon
 } from '@heroicons/react/24/outline';
-import axiosInstance from '../utils/axiosInstance';  // ✅ Use axiosInstance
+import axiosInstance from '../utils/axiosInstance';
 import toast, { Toaster } from 'react-hot-toast';
 import { UNITS } from '../../Endpoint/Endpoint';
 
@@ -41,9 +41,14 @@ const Units = () => {
   const [bulkUnitsText, setBulkUnitsText] = useState('');
   const [formErrors, setFormErrors] = useState({});
 
+  // ✅ Track initial mount to prevent double fetch
+  const isInitialMount = useRef(true);
+
   // Fetch Units
   const fetchUnits = async (limit = 10, offset = 0, search = '') => {
     setLoading(true);
+    console.log(`📡 Fetching units: limit=${limit}, offset=${offset}, search="${search}"`);
+    
     try {
       const response = await axiosInstance.get(
         UNITS.GET_ALL(limit, offset, search)
@@ -52,22 +57,30 @@ const Units = () => {
       if (response.data) {
         setUnits(response.data.data || []);
         setPagination(response.data.pagination || {});
+        console.log(`✅ Fetched ${response.data.data?.length || 0} units`);
       }
     } catch (error) {
-      console.error('Error fetching units:', error);
+      console.error('❌ Error fetching units:', error);
       toast.error(error.response?.data?.message || 'Failed to fetch units');
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial Load
+  // ✅ Fetch units ONCE on mount
   useEffect(() => {
-    fetchUnits(pagination.limit, pagination.offset, searchTerm);
+    console.log('🚀 Component mounted - Initial fetch');
+    fetchUnits(pagination.limit, 0, searchTerm);
   }, []);
 
-  // Search Handler with Debounce
+  // ✅ Debounced search (but NOT on mount)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return; // Skip on first render
+    }
+
+    console.log('🔍 Search term changed:', searchTerm);
     const delayDebounce = setTimeout(() => {
       fetchUnits(pagination.limit, 0, searchTerm);
     }, 500);
@@ -98,6 +111,7 @@ const Units = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      toast.error('Please fix validation errors');
       return;
     }
 
@@ -122,6 +136,7 @@ const Units = () => {
     e.preventDefault();
     
     if (!validateForm()) {
+      toast.error('Please fix validation errors');
       return;
     }
 
@@ -551,222 +566,251 @@ const Units = () => {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 backdrop-blur-xs   bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-blueGray-700">Create New Unit</h3>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleCreate} className="p-6">
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Unit Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.Name}
-                  onChange={(e) => setFormData({ ...formData, Name: e.target.value })}
-                  className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
-                    formErrors.Name ? 'ring-2 ring-red-500' : ''
-                  }`}
-                  placeholder="e.g., Kilogram"
-                  maxLength="50"
-                />
-                {formErrors.Name && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.Name}</p>
-                )}
-                <p className="text-blueGray-400 text-xs mt-1">
-                  {formData.Name.length}/50 characters
-                </p>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Symbol
-                </label>
-                <input
-                  type="text"
-                  value={formData.Symbol}
-                  onChange={(e) => setFormData({ ...formData, Symbol: e.target.value })}
-                  className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
-                    formErrors.Symbol ? 'ring-2 ring-red-500' : ''
-                  }`}
-                  placeholder="e.g., kg"
-                  maxLength="10"
-                />
-                {formErrors.Symbol && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.Symbol}</p>
-                )}
-                <p className="text-blueGray-400 text-xs mt-1">
-                  {formData.Symbol.length}/10 characters (Optional)
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-bold text-blueGray-700">Create New Unit</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-pink-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Creating...' : 'Create Unit'}
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-            </form>
+              
+              <form onSubmit={handleCreate} className="p-6">
+                <div className="mb-4">
+                  <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                    Unit Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.Name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, Name: e.target.value });
+                      if (formErrors.Name) {
+                        setFormErrors({ ...formErrors, Name: '' });
+                      }
+                    }}
+                    className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
+                      formErrors.Name ? 'ring-2 ring-red-500' : ''
+                    }`}
+                    placeholder="e.g., Kilogram"
+                    maxLength="50"
+                  />
+                  {formErrors.Name && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.Name}</p>
+                  )}
+                  <p className="text-blueGray-400 text-xs mt-1">
+                    {formData.Name.length}/50 characters
+                  </p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                    Symbol
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.Symbol}
+                    onChange={(e) => {
+                      setFormData({ ...formData, Symbol: e.target.value });
+                      if (formErrors.Symbol) {
+                        setFormErrors({ ...formErrors, Symbol: '' });
+                      }
+                    }}
+                    className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
+                      formErrors.Symbol ? 'ring-2 ring-red-500' : ''
+                    }`}
+                    placeholder="e.g., kg"
+                    maxLength="10"
+                  />
+                  {formErrors.Symbol && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.Symbol}</p>
+                  )}
+                  <p className="text-blueGray-400 text-xs mt-1">
+                    {formData.Symbol.length}/10 characters (Optional)
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetForm();
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-pink-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Creating...' : 'Create Unit'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 backdrop-blur-xs   bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-blueGray-700">Edit Unit</h3>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  resetForm();
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleUpdate} className="p-6">
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Unit Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.Name}
-                  onChange={(e) => setFormData({ ...formData, Name: e.target.value })}
-                  className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
-                    formErrors.Name ? 'ring-2 ring-red-500' : ''
-                  }`}
-                  placeholder="e.g., Kilogram"
-                  maxLength="50"
-                />
-                {formErrors.Name && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.Name}</p>
-                )}
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Symbol
-                </label>
-                <input
-                  type="text"
-                  value={formData.Symbol}
-                  onChange={(e) => setFormData({ ...formData, Symbol: e.target.value })}
-                  className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
-                    formErrors.Symbol ? 'ring-2 ring-red-500' : ''
-                  }`}
-                  placeholder="e.g., kg"
-                  maxLength="10"
-                />
-                {formErrors.Symbol && (
-                  <p className="text-red-500 text-xs mt-1">{formErrors.Symbol}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-bold text-blueGray-700">Edit Unit</h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowEditModal(false);
                     resetForm();
                   }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Updating...' : 'Update Unit'}
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-            </form>
+              
+              <form onSubmit={handleUpdate} className="p-6">
+                <div className="mb-4">
+                  <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                    Unit Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.Name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, Name: e.target.value });
+                      if (formErrors.Name) {
+                        setFormErrors({ ...formErrors, Name: '' });
+                      }
+                    }}
+                    className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
+                      formErrors.Name ? 'ring-2 ring-red-500' : ''
+                    }`}
+                    placeholder="e.g., Kilogram"
+                    maxLength="50"
+                  />
+                  {formErrors.Name && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.Name}</p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                    Symbol
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.Symbol}
+                    onChange={(e) => {
+                      setFormData({ ...formData, Symbol: e.target.value });
+                      if (formErrors.Symbol) {
+                        setFormErrors({ ...formErrors, Symbol: '' });
+                      }
+                    }}
+                    className={`border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full ${
+                      formErrors.Symbol ? 'ring-2 ring-red-500' : ''
+                    }`}
+                    placeholder="e.g., kg"
+                    maxLength="10"
+                  />
+                  {formErrors.Symbol && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.Symbol}</p>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      resetForm();
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Updating...' : 'Update Unit'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* View Modal */}
       {showViewModal && selectedUnit && (
-        <div className="fixed inset-0 backdrop-blur-xs   bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <h3 className="text-xl font-bold text-blueGray-700">Unit Details</h3>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">ID:</span>
-                <span className="text-blueGray-700 font-semibold">{selectedUnit.Id}</span>
-              </div>
-
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Unit Name:</span>
-                <span className="text-blueGray-700 font-semibold">{selectedUnit.Name}</span>
-              </div>
-
-              <div className="flex items-start">
-                <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Symbol:</span>
-                {selectedUnit.Symbol ? (
-                  <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded">
-                    {selectedUnit.Symbol}
-                  </span>
-                ) : (
-                  <span className="italic text-blueGray-400">No symbol</span>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    openEditModal(selectedUnit);
-                  }}
-                  className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
-                >
-                  Edit
-                </button>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h3 className="text-xl font-bold text-blueGray-700">Unit Details</h3>
                 <button
                   onClick={() => setShowViewModal(false)}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Close
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">ID:</span>
+                  <span className="text-blueGray-700 font-semibold">{selectedUnit.Id}</span>
+                </div>
+
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Unit Name:</span>
+                  <span className="text-blueGray-700 font-semibold">{selectedUnit.Name}</span>
+                </div>
+
+                <div className="flex items-start">
+                  <span className="inline-block w-32 text-blueGray-600 text-sm font-bold">Symbol:</span>
+                  {selectedUnit.Symbol ? (
+                    <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded">
+                      {selectedUnit.Symbol}
+                    </span>
+                  ) : (
+                    <span className="italic text-blueGray-400">No symbol</span>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      setShowViewModal(false);
+                      openEditModal(selectedUnit);
+                    }}
+                    className="bg-green-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 flex items-center gap-2"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setShowViewModal(false)}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -775,39 +819,45 @@ const Units = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && selectedUnit && (
-        <div className="fixed inset-0 backdrop-blur-xs   bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md animate-fadeIn">
-            <div className="p-6">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-                <TrashIcon className="h-6 w-6 text-red-600" />
-              </div>
-              
-              <h3 className="text-xl font-bold text-center text-blueGray-700 mb-2">
-                Delete Unit
-              </h3>
-              
-              <p className="text-center text-blueGray-600 mb-6">
-                Are you sure you want to delete "<strong>{selectedUnit.Name}</strong>"? 
-                This action will mark it as deleted.
-              </p>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-full p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md animate-fadeIn">
+              <div className="p-6">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto bg-red-100 rounded-full mb-4">
+                  <ExclamationTriangleIcon className="h-8 w-8 text-red-600" />
+                </div>
+                
+                <h3 className="text-xl font-bold text-center text-blueGray-700 mb-2">
+                  Delete Unit
+                </h3>
+                
+                <p className="text-center text-blueGray-600 mb-6">
+                  Are you sure you want to delete "<strong className="text-blueGray-800">{selectedUnit.Name}</strong>"? 
+                  <br />
+                  <span className="text-sm text-blueGray-500 mt-2 inline-block">
+                    This action will mark it as deleted.
+                  </span>
+                </p>
 
-              <div className="flex justify-center gap-2">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setSelectedUnit(null);
-                  }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="bg-red-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Deleting...' : 'Delete'}
-                </button>
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false);
+                      setSelectedUnit(null);
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={loading}
+                    className="bg-red-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -816,62 +866,67 @@ const Units = () => {
 
       {/* Bulk Create Modal */}
       {showBulkCreateModal && (
-        <div className="fixed inset-0 backdrop-blur-xs   bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl animate-fadeIn">
-            <div className="flex justify-between items-center p-6 border-b">
-              <div>
-                <h3 className="text-xl font-bold text-blueGray-700">Bulk Create Units</h3>
-                <p className="text-sm text-blueGray-500 mt-1">Create multiple units at once (max 50)</p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowBulkCreateModal(false);
-                  setBulkUnitsText('');
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleBulkCreate} className="p-6">
-              <div className="mb-4">
-                <label className="block text-blueGray-600 text-sm font-bold mb-2">
-                  Enter Units (One per line, format: Name, Symbol)
-                </label>
-                <textarea
-                  value={bulkUnitsText}
-                  onChange={(e) => setBulkUnitsText(e.target.value)}
-                  className="border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full font-mono"
-                  placeholder="Kilogram, kg&#10;Gram, g&#10;Liter, L&#10;Meter, m&#10;Piece, pcs"
-                  rows="10"
-                />
-                <p className="text-blueGray-400 text-xs mt-2">
-                  Format: Each line should contain unit name and symbol separated by comma.
-                  Example: <code className="bg-gray-100 px-1">Kilogram, kg</code>
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto">
+          <div className="flex items-start justify-center min-h-full p-4 sm:p-8">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl my-8 animate-fadeIn">
+              <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10 rounded-t-xl">
+                <div>
+                  <h3 className="text-xl font-bold text-blueGray-700">Bulk Create Units</h3>
+                  <p className="text-sm text-blueGray-500 mt-1">Create multiple units at once (max 50)</p>
+                </div>
                 <button
-                  type="button"
                   onClick={() => {
                     setShowBulkCreateModal(false);
                     setBulkUnitsText('');
                   }}
-                  className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-purple-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Creating...' : 'Create Units'}
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-            </form>
+              
+              <form onSubmit={handleBulkCreate}>
+                <div className="p-6 max-h-[calc(100vh-250px)] overflow-y-auto">
+                  <div className="mb-4">
+                    <label className="block text-blueGray-600 text-sm font-bold mb-2">
+                      Enter Units (One per line, format: Name, Symbol)
+                    </label>
+                    <textarea
+                      value={bulkUnitsText}
+                      onChange={(e) => setBulkUnitsText(e.target.value)}
+                      className="border-0 px-3 py-3 placeholder-blueGray-300 text-blueGray-600 bg-white rounded text-sm shadow focus:outline-none focus:ring w-full font-mono"
+                      placeholder="Kilogram, kg&#10;Gram, g&#10;Liter, L&#10;Meter, m&#10;Piece, pcs"
+                      rows="10"
+                    />
+                    <p className="text-blueGray-400 text-xs mt-2">
+                      Format: Each line should contain unit name and symbol separated by comma.
+                      Example: <code className="bg-gray-100 px-1">Kilogram, kg</code>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 p-6 border-t sticky bottom-0 bg-white rounded-b-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowBulkCreateModal(false);
+                      setBulkUnitsText('');
+                    }}
+                    className="bg-gray-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-purple-500 text-white font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none ease-linear transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                    {loading ? 'Creating...' : 'Create Units'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
