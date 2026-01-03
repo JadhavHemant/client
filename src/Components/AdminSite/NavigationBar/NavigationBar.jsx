@@ -443,6 +443,7 @@ export default function NavigationBar() {
       icon: ArchiveBoxIcon,
       children: [
         { name: "Company", href: "/Admin/Company" },
+        { name: "Customer", href: "/Admin/Customer" },
         { name: "Category", href: "/Admin/category" },
         { name: "Units", href: "/Admin/Units" },
         { name: "Product", href: "/Admin/Product" },
@@ -452,6 +453,8 @@ export default function NavigationBar() {
         { name: "Supplier", href: "/Admin/Supplier" },
         { name: "PurchaseOrder", href: "/Admin/PurchaseOrder" },
         { name: "PurchaseOrderIteam", href: "/Admin/PurchaseOrderIteam" },
+        { name: "SalesOrder", href: "/Admin/SalesOrder" },
+
 
 
 

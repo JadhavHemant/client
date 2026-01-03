@@ -254,25 +254,98 @@ export const PURCHASE_ORDER_ITEMS = {
     BASE: `${API_BASE_URL}/purchase-order-items`,
     CREATE: `${API_BASE_URL}/purchase-order-items`,
     GET_ALL: (params = {}) => {
-        const { limit = 10, offset = 0, productId = '', status = '' } = params;
+        const { limit = 10, offset = 0 } = params;
         const queryParams = new URLSearchParams();
         if (limit) queryParams.append('limit', limit);
         if (offset) queryParams.append('offset', offset);
-        if (productId) queryParams.append('productId', productId);
-        if (status) queryParams.append('status', status);
         return `${API_BASE_URL}/purchase-order-items?${queryParams.toString()}`;
     },
-    GET_BY_ID: (id) => `${API_BASE_URL}/purchase-order-items/${id}`,
-    BY_ID: (id) => `${API_BASE_URL}/purchase-order-items/${id}`,
-    UPDATE: (id) => `${API_BASE_URL}/purchase-order-items/${id}`,
-    DELETE: (id) => `${API_BASE_URL}/purchase-order-items/${id}`,
     BY_PURCHASE_ORDER: (purchaseOrderId, limit = 50, offset = 0) => 
         `${API_BASE_URL}/purchase-order-items/purchase-order/${purchaseOrderId}?limit=${limit}&offset=${offset}`,
     SUMMARY: (purchaseOrderId) => 
         `${API_BASE_URL}/purchase-order-items/summary/${purchaseOrderId}`,
+    UPDATE: (id) => `${API_BASE_URL}/purchase-order-items/${id}`,
+    DELETE: (id) => `${API_BASE_URL}/purchase-order-items/${id}`,
     BULK_RECEIVE: `${API_BASE_URL}/purchase-order-items/bulk-receive`
 };
 
+
+// Add this to your existing Endpoint.js file
+
+export const CUSTOMERS = {
+    BASE: `${API_BASE_URL}/customers`,
+    GET_ALL: (params = {}) => {
+        const { 
+            limit = 10, offset = 0, search = '', isActive = '', 
+            customerType = '', sortBy = 'CreatedAt', sortOrder = 'DESC', 
+            includeDeleted = 'false' 
+        } = params;
+        
+        const queryParams = new URLSearchParams();
+        if (limit) queryParams.append('limit', limit);
+        if (offset) queryParams.append('offset', offset);
+        if (search) queryParams.append('search', search);
+        if (isActive !== '') queryParams.append('isActive', isActive);
+        if (customerType) queryParams.append('customerType', customerType);
+        if (sortBy) queryParams.append('sortBy', sortBy);
+        if (sortOrder) queryParams.append('sortOrder', sortOrder);
+        if (includeDeleted) queryParams.append('includeDeleted', includeDeleted);
+        
+        return `${API_BASE_URL}/customers?${queryParams.toString()}`;
+    },
+    GET_BY_ID: (id) => `${API_BASE_URL}/customers/${id}`,
+    GET_ACTIVE: `${API_BASE_URL}/customers/active`,
+    STATS: `${API_BASE_URL}/customers/stats`,
+    CREATE: `${API_BASE_URL}/customers`,
+    UPDATE: (id) => `${API_BASE_URL}/customers/${id}`,
+    TOGGLE_ACTIVE: (id) => `${API_BASE_URL}/customers/${id}/toggle-active`,
+    UPDATE_OUTSTANDING: (id) => `${API_BASE_URL}/customers/${id}/outstanding`,
+    SOFT_DELETE: (id) => `${API_BASE_URL}/customers/${id}/soft-delete`,
+    RESTORE: (id) => `${API_BASE_URL}/customers/${id}/restore`,
+    HARD_DELETE: (id) => `${API_BASE_URL}/customers/${id}`
+};
+
+
+
+// Add to your existing Endpoint.js
+
+export const SALES_ORDERS = {
+    BASE: `${API_BASE_URL}/sales-orders`,
+    GET_ALL: (params = {}) => {
+        const { 
+            limit = 10, offset = 0, search = '', status = '', paymentStatus = '',
+            customerId = '', startDate = '', endDate = '', priority = '',
+            sortBy = 'OrderDate', sortOrder = 'DESC', includeDeleted = 'false'
+        } = params;
+        
+        const queryParams = new URLSearchParams();
+        if (limit) queryParams.append('limit', limit);
+        if (offset) queryParams.append('offset', offset);
+        if (search) queryParams.append('search', search);
+        if (status) queryParams.append('status', status);
+        if (paymentStatus) queryParams.append('paymentStatus', paymentStatus);
+        if (customerId) queryParams.append('customerId', customerId);
+        if (startDate) queryParams.append('startDate', startDate);
+        if (endDate) queryParams.append('endDate', endDate);
+        if (priority) queryParams.append('priority', priority);
+        if (sortBy) queryParams.append('sortBy', sortBy);
+        if (sortOrder) queryParams.append('sortOrder', sortOrder);
+        if (includeDeleted) queryParams.append('includeDeleted', includeDeleted);
+        
+        return `${API_BASE_URL}/sales-orders?${queryParams.toString()}`;
+    },
+    GET_BY_ID: (id) => `${API_BASE_URL}/sales-orders/${id}`,
+    STATS: `${API_BASE_URL}/sales-orders/stats`,
+    BY_CUSTOMER: (customerId, limit = 10, offset = 0) => 
+        `${API_BASE_URL}/sales-orders/customer/${customerId}?limit=${limit}&offset=${offset}`,
+    CREATE: `${API_BASE_URL}/sales-orders`,
+    UPDATE: (id) => `${API_BASE_URL}/sales-orders/${id}`,
+    UPDATE_STATUS: (id) => `${API_BASE_URL}/sales-orders/${id}/status`,
+    UPDATE_PAYMENT: (id) => `${API_BASE_URL}/sales-orders/${id}/payment`,
+    SOFT_DELETE: (id) => `${API_BASE_URL}/sales-orders/${id}/soft-delete`,
+    RESTORE: (id) => `${API_BASE_URL}/sales-orders/${id}/restore`,
+    HARD_DELETE: (id) => `${API_BASE_URL}/sales-orders/${id}`
+};
 
 
 // ==================== DEFAULT EXPORT ====================
