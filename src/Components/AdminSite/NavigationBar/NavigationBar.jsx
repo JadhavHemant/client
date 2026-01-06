@@ -520,7 +520,7 @@ export default function NavigationBar() {
         <div className="h-16 bg-gray-800 flex items-center justify-between px-4 border-b border-gray-700 flex-shrink-0">
           {isSidebarExpanded ? (
             <>
-              <h1 className="text-xl font-bold text-white whitespace-nowrap">LOGO</h1>
+              <h1 className="text-xl font-bold text-white whitespace-nowrap">SHIVANI</h1>
               <button
                 onClick={toggleSidebar}
                 className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700 transition"
@@ -678,7 +678,7 @@ export default function NavigationBar() {
           >
             {isMobileOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
           </button>
-          <h1 className="text-lg font-bold text-white">LOGO</h1>
+          <h1 className="text-lg font-bold text-white">SHIVANI</h1>
         </div>
 
         <Menu as="div" className="relative">
