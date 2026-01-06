@@ -1,9 +1,9 @@
-const BASE_URL = "http://localhost:5351/api/users";
-const BASE_URL_TOKEN = "http://localhost:5351/api/token";
-const BASE_URL_COMPANY = "http://localhost:5351/api/company";
-const BASE_URL_PRODUCT_CATEGORY = "http://localhost:5351/api/productcategory";
-const BASE_URL_UNITS = "http://localhost:5351/api/units";
-const API_BASE_URL = "http://localhost:5351/api";
+const BASE_URL = "https://server-67qi.onrender.com/api/users";
+const BASE_URL_TOKEN = "https://server-67qi.onrender.com/api/token";
+const BASE_URL_COMPANY = "https://server-67qi.onrender.com/api/company";
+const BASE_URL_PRODUCT_CATEGORY = "https://server-67qi.onrender.com/api/productcategory";
+const BASE_URL_UNITS = "https://server-67qi.onrender.com/api/units";
+const API_BASE_URL = "https://server-67qi.onrender.com/api";
 
 // ==================== USER AUTHENTICATION ====================
 export const LOGIN_USER = `${BASE_URL}/login`;
