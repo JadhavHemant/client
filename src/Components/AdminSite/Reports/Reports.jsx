@@ -1,5 +1,4 @@
-import React from "react";
-import { motion } from "framer-motion";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -17,178 +16,220 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import axiosInstance from "../utils/axiosInstance";
+import * as API from "../../Endpoint/Endpoint";
 
 const Reports = () => {
-  const salesData = [
-    { month: "Jan", sales: 4000, profit: 2400 },
-    { month: "Feb", sales: 3000, profit: 1398 },
-    { month: "Mar", sales: 2000, profit: 9800 },
-    { month: "Apr", sales: 2780, profit: 3908 },
-    { month: "May", sales: 1890, profit: 4800 },
-    { month: "Jun", sales: 2390, profit: 3800 },
-    { month: "Jul", sales: 3490, profit: 4300 },
+  const [dashboard, setDashboard] = useState({
+    summary: {},
+    apiHealth: [],
+    recentAlerts: [],
+  });
+  const [employeeActivity, setEmployeeActivity] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboard = async () => {
+    const [dashboardRes, employeeRes, notificationsRes] = await Promise.all([
+      axiosInstance.get(API.REPORTS_DASHBOARD),
+      axiosInstance.get(API.REPORTS_EMPLOYEE_ACTIVITY),
+      axiosInstance.get(API.REPORTS_NOTIFICATIONS, { params: { limit: 10 } }),
+    ]);
+
+    setDashboard(dashboardRes.data || { summary: {}, apiHealth: [], recentAlerts: [] });
+    setEmployeeActivity(employeeRes.data?.data || []);
+    setNotifications(notificationsRes.data?.data || []);
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true);
+        await fetchDashboard();
+      } catch (error) {
+        console.error("Failed to load reports dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
+  }, []);
+
+  const summary = dashboard.summary || {};
+
+  const employeeChartData = useMemo(
+    () =>
+      employeeActivity.slice(0, 8).map((row) => ({
+        name: row.Name,
+        leads: Number(row.LeadsCreated || 0),
+        opportunities: Number(row.OpportunitiesCreated || 0),
+        revenue: Number(row.RevenueGenerated || 0),
+      })),
+    [employeeActivity]
+  );
+
+  const apiHealthData = useMemo(
+    () =>
+      (dashboard.apiHealth || []).map((row) => ({
+        date: row.Date,
+        success: Number(row.SuccessCalls || 0),
+        failed: Number(row.FailedCalls || 0),
+        total: Number(row.TotalCalls || 0),
+      })),
+    [dashboard.apiHealth]
+  );
+
+  const apiPieData = [
+    { name: "Success", value: apiHealthData.reduce((sum, row) => sum + row.success, 0) },
+    { name: "Failed", value: apiHealthData.reduce((sum, row) => sum + row.failed, 0) },
   ];
 
-  const barData = [
-    { name: "Product A", uv: 4000, pv: 2400 },
-    { name: "Product B", uv: 3000, pv: 4567 },
-    { name: "Product C", uv: 2000, pv: 1398 },
-    { name: "Product D", uv: 2780, pv: 3908 },
-    { name: "Product E", uv: 1890, pv: 4800 },
-  ];
-
-  const pieData = [
-    { name: "Mobile", value: 400 },
-    { name: "Laptop", value: 300 },
-    { name: "Tablet", value: 300 },
-    { name: "Accessories", value: 200 },
-  ];
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+  const COLORS = ["#00C49F", "#FF4D4F", "#FFBB28", "#0088FE"];
 
   return (
-    <div className="p-6 min-h-screen bg-gray-100 overflow-y-auto">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="mb-6"
-      >
-        <h1 className="text-3xl font-bold text-gray-800">📊 Dashboard Overview</h1>
-        <p className="text-gray-500">Analytics, Reports & Statistics (Dummy Data)</p>
-      </motion.div>
+    <div className="min-h-screen overflow-y-auto bg-gray-100 p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Super Admin Report Dashboard</h1>
+        <p className="text-gray-500">
+          Employee activity, lead performance, revenue analytics, and API failure monitoring
+        </p>
+      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-4">
         {[
-          { title: "Total Sales", value: "$45,890", color: "bg-blue-500" },
-          { title: "Total Users", value: "12,345", color: "bg-green-500" },
-          { title: "Revenue Growth", value: "+15%", color: "bg-yellow-500" },
-        ].map((card, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 * i, duration: 0.6 }}
-            className={`${card.color} rounded-2xl p-6 text-white shadow-lg`}
-          >
+          { title: "Active Leads", value: summary.ActiveLeads || 0, color: "bg-blue-500" },
+          { title: "Active Users", value: summary.ActiveUsers || 0, color: "bg-green-500" },
+          { title: "Total Revenue", value: `Rs ${summary.TotalRevenue || 0}`, color: "bg-indigo-500" },
+          { title: "API Failures (7d)", value: summary.ApiFailuresLast7Days || 0, color: "bg-red-500" },
+        ].map((card) => (
+          <div key={card.title} className={`${card.color} rounded-2xl p-6 text-white shadow-lg`}>
             <h2 className="text-lg font-semibold">{card.title}</h2>
-            <p className="text-3xl font-bold mt-2">{card.value}</p>
-          </motion.div>
+            <p className="mt-2 text-3xl font-bold">{card.value}</p>
+          </div>
         ))}
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Line Chart */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-          className="bg-white rounded-2xl shadow-lg p-6"
-        >
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">
-            Sales vs Profit Trend
-          </h3>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">API Success vs Failure Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={salesData}>
+            <LineChart data={apiHealthData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
+              <XAxis dataKey="date" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="sales" stroke="#8884d8" />
-              <Line type="monotone" dataKey="profit" stroke="#82ca9d" />
+              <Line type="monotone" dataKey="success" stroke="#00C49F" name="Success" />
+              <Line type="monotone" dataKey="failed" stroke="#FF4D4F" name="Failed" />
             </LineChart>
           </ResponsiveContainer>
-        </motion.div>
+        </div>
 
-        {/* Bar Chart */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-lg p-6"
-        >
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">
-            Product Performance
-          </h3>
+        <div className="rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">Employee Activity (Leads / Opportunities)</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={barData}>
+            <BarChart data={employeeChartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="pv" fill="#8884d8" />
-              <Bar dataKey="uv" fill="#82ca9d" />
+              <Bar dataKey="leads" fill="#3B82F6" name="Leads" />
+              <Bar dataKey="opportunities" fill="#10B981" name="Opportunities" />
             </BarChart>
           </ResponsiveContainer>
-        </motion.div>
+        </div>
 
-        {/* Pie Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-white rounded-2xl shadow-lg p-6"
-        >
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Sales Breakdown</h3>
+        <div className="rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">API Health Share</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={pieData}
+                data={apiPieData}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
                 outerRadius={120}
-                fill="#8884d8"
                 dataKey="value"
               >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {apiPieData.map((entry, index) => (
+                  <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
-        </motion.div>
+        </div>
 
-        {/* Area Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="bg-white rounded-2xl shadow-lg p-6"
-        >
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Revenue Growth</h3>
+        <div className="rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">Employee Revenue</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={salesData}>
+            <AreaChart data={employeeChartData}>
               <defs>
-                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="month" />
+              <XAxis dataKey="name" />
               <YAxis />
               <CartesianGrid strokeDasharray="3 3" />
               <Tooltip />
               <Area
                 type="monotone"
-                dataKey="sales"
+                dataKey="revenue"
                 stroke="#8884d8"
                 fillOpacity={1}
-                fill="url(#colorSales)"
+                fill="url(#colorRevenue)"
               />
             </AreaChart>
           </ResponsiveContainer>
-        </motion.div>
+        </div>
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div className="rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">Recent API Alerts</h3>
+          <div className="max-h-80 space-y-3 overflow-auto pr-2">
+            {(dashboard.recentAlerts || []).map((alert) => (
+              <div key={alert.Id} className="rounded-xl border border-gray-200 p-3">
+                <p className="font-semibold text-gray-800">
+                  {alert.IntegrationName || "Integration"} / {alert.EndpointName || "Endpoint"}
+                </p>
+                <p className="text-sm text-gray-600">{alert.ErrorMessage || "No error message"}</p>
+                <p className="mt-1 text-xs text-red-600">
+                  Status: {alert.AlertStatus} | Code: {alert.ResponseStatusCode || "-"}
+                </p>
+              </div>
+            ))}
+            {!loading && !(dashboard.recentAlerts || []).length ? (
+              <p className="text-sm text-gray-500">No recent API alerts found.</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-lg">
+          <h3 className="mb-4 text-xl font-semibold text-gray-700">Recent Notifications</h3>
+          <div className="max-h-80 space-y-3 overflow-auto pr-2">
+            {notifications.map((notification) => (
+              <div key={notification.Id} className="rounded-xl border border-gray-200 p-3">
+                <p className="font-semibold text-gray-800">{notification.Title}</p>
+                <p className="text-sm text-gray-600">{notification.Message}</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {notification.Type} | {notification.Severity} | {notification.UserName || "System"}
+                </p>
+              </div>
+            ))}
+            {!loading && !notifications.length ? (
+              <p className="text-sm text-gray-500">No notifications found.</p>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default Reports;
- 

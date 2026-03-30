@@ -1,13 +1,5 @@
-import axios from 'axios';
 import { SUPPLIERS } from '../Components/Endpoint/Endpoint';
-
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` })
-    };
-};
+import axiosInstance from '../Components/AdminSite/utils/axiosInstance';
 
 export const supplierService = {
     // Get all suppliers with filters
@@ -15,7 +7,7 @@ export const supplierService = {
         try {
             const { limit = 10, offset = 0, search = '', isActive = '', sortBy = 'CreatedAt', sortOrder = 'DESC' } = params;
             const url = SUPPLIERS.GET_ALL(limit, offset, search, isActive, sortBy, sortOrder);
-            const response = await axios.get(url, { headers: getAuthHeaders() });
+            const response = await axiosInstance.get(url);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -25,7 +17,7 @@ export const supplierService = {
     // Get active suppliers only
     getActiveSuppliers: async () => {
         try {
-            const response = await axios.get(SUPPLIERS.GET_ACTIVE, { headers: getAuthHeaders() });
+            const response = await axiosInstance.get(SUPPLIERS.GET_ACTIVE);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -35,7 +27,7 @@ export const supplierService = {
     // Get supplier by ID
     getSupplierById: async (id) => {
         try {
-            const response = await axios.get(SUPPLIERS.GET_BY_ID(id), { headers: getAuthHeaders() });
+            const response = await axiosInstance.get(SUPPLIERS.GET_BY_ID(id));
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -45,7 +37,7 @@ export const supplierService = {
     // Create new supplier
     createSupplier: async (supplierData) => {
         try {
-            const response = await axios.post(SUPPLIERS.CREATE, supplierData, { headers: getAuthHeaders() });
+            const response = await axiosInstance.post(SUPPLIERS.CREATE, supplierData);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -55,7 +47,7 @@ export const supplierService = {
     // Update supplier
     updateSupplier: async (id, supplierData) => {
         try {
-            const response = await axios.put(SUPPLIERS.UPDATE(id), supplierData, { headers: getAuthHeaders() });
+            const response = await axiosInstance.put(SUPPLIERS.UPDATE(id), supplierData);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -65,7 +57,7 @@ export const supplierService = {
     // Soft delete supplier
     softDeleteSupplier: async (id) => {
         try {
-            const response = await axios.patch(SUPPLIERS.SOFT_DELETE(id), {}, { headers: getAuthHeaders() });
+            const response = await axiosInstance.patch(SUPPLIERS.SOFT_DELETE(id), {});
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -75,7 +67,7 @@ export const supplierService = {
     // Hard delete supplier
     hardDeleteSupplier: async (id) => {
         try {
-            const response = await axios.delete(SUPPLIERS.HARD_DELETE(id), { headers: getAuthHeaders() });
+            const response = await axiosInstance.delete(SUPPLIERS.HARD_DELETE(id));
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;

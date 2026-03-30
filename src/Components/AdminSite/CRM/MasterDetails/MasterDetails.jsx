@@ -229,8 +229,8 @@
 
 
 import { useState, useEffect } from "react";
-import axios from "axios";
 import * as API from "../../../Endpoint/Endpoint";
+import axiosInstance from "../../utils/axiosInstance";
 
 const MasterDetails = () => {
   const [selectedSection, setSelectedSection] = useState("");
@@ -246,7 +246,7 @@ const MasterDetails = () => {
   // ===================== FETCH FUNCTIONS =====================
   const fetchTaskTypes = async () => {
     try {
-      const response = await axios.get(API.TASKTYPE);
+      const response = await axiosInstance.get(API.TASKTYPE);
       setTaskTypes(response.data);
     } catch (err) {
       console.error("Error fetching task types:", err);
@@ -255,7 +255,7 @@ const MasterDetails = () => {
 
   const fetchSalesStages = async () => {
     try {
-      const response = await axios.get(API.SALESSTAGES);
+      const response = await axiosInstance.get(API.SALESSTAGES);
       setSalesStages(response.data);
     } catch (err) {
       console.error("Error fetching sales stages:", err);
@@ -264,7 +264,7 @@ const MasterDetails = () => {
 
   const fetchProductCategories = async () => {
     try {
-      const response = await axios.get(API.PRODUCTCATEGORIES);
+      const response = await axiosInstance.get(API.PRODUCTCATEGORIES);
       setProductCategories(response.data);
     } catch (err) {
       console.error("Error fetching product categories:", err);
@@ -273,7 +273,7 @@ const MasterDetails = () => {
 
   const fetchIndustries = async () => {
     try {
-      const response = await axios.get(API.INDUSTRIES);
+      const response = await axiosInstance.get(API.INDUSTRIES);
       setIndustries(response.data);
     } catch (err) {
       console.error("Error fetching industries:", err);
@@ -282,7 +282,7 @@ const MasterDetails = () => {
 
   const fetchFollowupTypes = async () => {
     try {
-      const response = await axios.get(API.FOLLOWUPTYPES);
+      const response = await axiosInstance.get(API.FOLLOWUPTYPES);
       setFollowupTypes(response.data);
     } catch (err) {
       console.error("Error fetching follow-up types:", err);
@@ -293,7 +293,7 @@ const MasterDetails = () => {
   const handleCreateTask = async () => {
     try {
       const newTask = { Name: newTaskName, DefaultDurationMinutes: newTaskDuration };
-      const response = await axios.post(API.POSTTASKTYPE, newTask);
+      const response = await axiosInstance.post(API.POSTTASKTYPE, newTask);
       setTaskTypes((prev) => [...prev, response.data]);
       setNewTaskName("");
       setNewTaskDuration(0);
@@ -304,7 +304,7 @@ const MasterDetails = () => {
 
   const handleDeleteTask = async (id) => {
     try {
-      await axios.delete(API.DELETETASKTYPE(id));
+      await axiosInstance.delete(API.DELETETASKTYPE(id));
       setTaskTypes((prev) => prev.filter((task) => task.Id !== id));
     } catch (err) {
       console.error("Error deleting task:", err);

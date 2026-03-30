@@ -1,9 +1,16 @@
-const BASE_URL = "https://server-67qi.onrender.com/api/users";
-const BASE_URL_TOKEN = "https://server-67qi.onrender.com/api/token";
-const BASE_URL_COMPANY = "https://server-67qi.onrender.com/api/company";
-const BASE_URL_PRODUCT_CATEGORY = "https://server-67qi.onrender.com/api/productcategory";
-const BASE_URL_UNITS = "https://server-67qi.onrender.com/api/units";
-const API_BASE_URL = "https://server-67qi.onrender.com/api";
+const API_BASE_URL_RAW =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV
+    ? "http://localhost:5351/api"
+    : "https://server-67qi.onrender.com/api");
+// Ensure we never end up with a double slash when composing URLs.
+export const API_BASE_URL = API_BASE_URL_RAW.replace(/\/$/, "");
+
+const BASE_URL = `${API_BASE_URL}/users`;
+const BASE_URL_TOKEN = `${API_BASE_URL}/token`;
+const BASE_URL_COMPANY = `${API_BASE_URL}/company`;
+const BASE_URL_PRODUCT_CATEGORY = `${API_BASE_URL}/productcategory`;
+const BASE_URL_UNITS = `${API_BASE_URL}/units`;
 
 // ==================== USER AUTHENTICATION ====================
 export const LOGIN_USER = `${BASE_URL}/login`;
@@ -12,9 +19,33 @@ export const RESET_PASSWORD = `${BASE_URL}/reset-password`;
 export const PROFILE = `${BASE_URL}/profile`;
 export const CREATEUSER = `${BASE_URL}/register`;
 export const GETALLUSERS = `${BASE_URL}/getall/profiles`;
+export const UPDATE_USER = `${BASE_URL}/update`;
+export const USERS_HIERARCHY = `${BASE_URL}/org/hierarchy`;
+export const USERS_MY_TEAM = `${BASE_URL}/my-team`;
+export const USERS_DIRECT_REPORTS = (userId) => `${BASE_URL}/direct-reports/${userId}`;
+export const USERS_COMPANY_ORG = (companyId) => `${BASE_URL}/company/${companyId}/org-chart`;
+
+// ==================== REPORTS & MONITORING ====================
+export const REPORTS_DASHBOARD = `${API_BASE_URL}/reports/dashboard`;
+export const REPORTS_EMPLOYEE_ACTIVITY = `${API_BASE_URL}/reports/employee-activity`;
+export const REPORTS_NOTIFICATIONS = `${API_BASE_URL}/reports/notifications`;
+export const MONITORING_EXECUTION_LOG = `${API_BASE_URL}/monitoring/execution-log`;
 
 // ==================== TOKEN ====================
 export const REFRESH_TOKEN = `${BASE_URL_TOKEN}/refresh-token`;
+
+// ==================== CRM MASTER DATA ====================
+// These are used by `MasterDetails.jsx` for dropdown CRUD.
+// Note: `TaskType` is already implemented on the backend; the others can be wired similarly.
+export const TASKTYPE = `${API_BASE_URL}/TaskType`;
+export const SALESSTAGES = `${API_BASE_URL}/SalesStages`;
+export const PRODUCTCATEGORIES = `${API_BASE_URL}/productcategory/list`;
+export const INDUSTRIES = `${API_BASE_URL}/Industries`;
+export const FOLLOWUPTYPES = `${API_BASE_URL}/FollowupTypes`;
+
+// TaskType create/delete helpers used by `MasterDetails.jsx`
+export const POSTTASKTYPE = `${API_BASE_URL}/TaskType`;
+export const DELETETASKTYPE = (id) => `${API_BASE_URL}/TaskType/${id}`;
 
 // ==================== LEGACY COMPANY ENDPOINTS ====================
 export const CREATE_COMPANY = `${BASE_URL_COMPANY}/`;
@@ -166,8 +197,8 @@ export const STOCK_MOVEMENTS = {
 };
 
 export const SUPPLIERS = {
-    BASE: `${API_BASE_URL}/suppliers`,
-    CREATE: `${API_BASE_URL}/suppliers`,
+    BASE: `${API_BASE_URL}/Suppliers`,
+    CREATE: `${API_BASE_URL}/Suppliers`,
     GET_ALL: (limit = 10, offset = 0, search = '', isActive = '', sortBy = 'CreatedAt', sortOrder = 'DESC') => {
         const params = new URLSearchParams();
         if (limit) params.append('limit', limit);
@@ -176,15 +207,15 @@ export const SUPPLIERS = {
         if (isActive !== '') params.append('isActive', isActive);
         if (sortBy) params.append('sortBy', sortBy);
         if (sortOrder) params.append('sortOrder', sortOrder);
-        return `${API_BASE_URL}/suppliers?${params.toString()}`;
+        return `${API_BASE_URL}/Suppliers?${params.toString()}`;
     },
-    GET_ACTIVE: `${API_BASE_URL}/suppliers?isActive=true`,
-    GET_BY_ID: (id) => `${API_BASE_URL}/suppliers/${id}`,
-    BY_ID: (id) => `${API_BASE_URL}/suppliers/${id}`,
-    UPDATE: (id) => `${API_BASE_URL}/suppliers/${id}`,
-    SOFT_DELETE: (id) => `${API_BASE_URL}/suppliers/soft-delete/${id}`,
-    HARD_DELETE: (id) => `${API_BASE_URL}/suppliers/hard-delete/${id}`,
-    DELETE: (id) => `${API_BASE_URL}/suppliers/soft-delete/${id}`, // alias for soft delete
+    GET_ACTIVE: `${API_BASE_URL}/Suppliers?isActive=true`,
+    GET_BY_ID: (id) => `${API_BASE_URL}/Suppliers/${id}`,
+    BY_ID: (id) => `${API_BASE_URL}/Suppliers/${id}`,
+    UPDATE: (id) => `${API_BASE_URL}/Suppliers/${id}`,
+    SOFT_DELETE: (id) => `${API_BASE_URL}/Suppliers/soft-delete/${id}`,
+    HARD_DELETE: (id) => `${API_BASE_URL}/Suppliers/hard-delete/${id}`,
+    DELETE: (id) => `${API_BASE_URL}/Suppliers/soft-delete/${id}`, // alias for soft delete
 };
 
 
@@ -273,7 +304,7 @@ export const PURCHASE_ORDER_ITEMS = {
 // Add this to your existing Endpoint.js file
 
 export const CUSTOMERS = {
-    BASE: `${API_BASE_URL}/customers`,
+    BASE: `${API_BASE_URL}/Customers`,
     GET_ALL: (params = {}) => {
         const { 
             limit = 10, offset = 0, search = '', isActive = '', 
@@ -291,18 +322,18 @@ export const CUSTOMERS = {
         if (sortOrder) queryParams.append('sortOrder', sortOrder);
         if (includeDeleted) queryParams.append('includeDeleted', includeDeleted);
         
-        return `${API_BASE_URL}/customers?${queryParams.toString()}`;
+        return `${API_BASE_URL}/Customers?${queryParams.toString()}`;
     },
-    GET_BY_ID: (id) => `${API_BASE_URL}/customers/${id}`,
-    GET_ACTIVE: `${API_BASE_URL}/customers/active`,
-    STATS: `${API_BASE_URL}/customers/stats`,
-    CREATE: `${API_BASE_URL}/customers`,
-    UPDATE: (id) => `${API_BASE_URL}/customers/${id}`,
-    TOGGLE_ACTIVE: (id) => `${API_BASE_URL}/customers/${id}/toggle-active`,
-    UPDATE_OUTSTANDING: (id) => `${API_BASE_URL}/customers/${id}/outstanding`,
-    SOFT_DELETE: (id) => `${API_BASE_URL}/customers/${id}/soft-delete`,
-    RESTORE: (id) => `${API_BASE_URL}/customers/${id}/restore`,
-    HARD_DELETE: (id) => `${API_BASE_URL}/customers/${id}`
+    GET_BY_ID: (id) => `${API_BASE_URL}/Customers/${id}`,
+    GET_ACTIVE: `${API_BASE_URL}/Customers/active`,
+    STATS: `${API_BASE_URL}/Customers/stats`,
+    CREATE: `${API_BASE_URL}/Customers`,
+    UPDATE: (id) => `${API_BASE_URL}/Customers/${id}`,
+    TOGGLE_ACTIVE: (id) => `${API_BASE_URL}/Customers/${id}/toggle-active`,
+    UPDATE_OUTSTANDING: (id) => `${API_BASE_URL}/Customers/${id}/outstanding`,
+    SOFT_DELETE: (id) => `${API_BASE_URL}/Customers/${id}/soft-delete`,
+    RESTORE: (id) => `${API_BASE_URL}/Customers/${id}/restore`,
+    HARD_DELETE: (id) => `${API_BASE_URL}/Customers/${id}`
 };
 
 

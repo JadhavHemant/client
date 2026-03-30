@@ -108,23 +108,14 @@
 
 // src/services/purchaseOrderItemService.js
 
-import axios from 'axios';
 import { PURCHASE_ORDER_ITEMS } from '../Components/Endpoint/Endpoint';
-
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
-    return {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` })
-    };
-};
+import axiosInstance from '../Components/AdminSite/utils/axiosInstance';
 
 export const purchaseOrderItemService = {
     getItemsByPurchaseOrderId: async (purchaseOrderId, limit = 50, offset = 0) => {
         try {
-            const response = await axios.get(
-                PURCHASE_ORDER_ITEMS.BY_PURCHASE_ORDER(purchaseOrderId, limit, offset),
-                { headers: getAuthHeaders() }
+            const response = await axiosInstance.get(
+                PURCHASE_ORDER_ITEMS.BY_PURCHASE_ORDER(purchaseOrderId, limit, offset)
             );
             return response.data;
         } catch (error) {
@@ -134,10 +125,7 @@ export const purchaseOrderItemService = {
 
     getPurchaseOrderSummary: async (purchaseOrderId) => {
         try {
-            const response = await axios.get(
-                PURCHASE_ORDER_ITEMS.SUMMARY(purchaseOrderId),
-                { headers: getAuthHeaders() }
-            );
+            const response = await axiosInstance.get(PURCHASE_ORDER_ITEMS.SUMMARY(purchaseOrderId));
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -146,11 +134,7 @@ export const purchaseOrderItemService = {
 
     createPurchaseOrderItem: async (itemData) => {
         try {
-            const response = await axios.post(
-                PURCHASE_ORDER_ITEMS.CREATE,
-                itemData,
-                { headers: getAuthHeaders() }
-            );
+            const response = await axiosInstance.post(PURCHASE_ORDER_ITEMS.CREATE, itemData);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -159,11 +143,7 @@ export const purchaseOrderItemService = {
 
     updatePurchaseOrderItem: async (id, itemData) => {
         try {
-            const response = await axios.put(
-                PURCHASE_ORDER_ITEMS.UPDATE(id),
-                itemData,
-                { headers: getAuthHeaders() }
-            );
+            const response = await axiosInstance.put(PURCHASE_ORDER_ITEMS.UPDATE(id), itemData);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -172,10 +152,7 @@ export const purchaseOrderItemService = {
 
     deletePurchaseOrderItem: async (id) => {
         try {
-            const response = await axios.delete(
-                PURCHASE_ORDER_ITEMS.DELETE(id),
-                { headers: getAuthHeaders() }
-            );
+            const response = await axiosInstance.delete(PURCHASE_ORDER_ITEMS.DELETE(id));
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -184,10 +161,7 @@ export const purchaseOrderItemService = {
 
     getAllPurchaseOrderItems: async (limit = 10, offset = 0) => {
         try {
-            const response = await axios.get(
-                PURCHASE_ORDER_ITEMS.GET_ALL({ limit, offset }),
-                { headers: getAuthHeaders() }
-            );
+            const response = await axiosInstance.get(PURCHASE_ORDER_ITEMS.GET_ALL({ limit, offset }));
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
@@ -196,11 +170,7 @@ export const purchaseOrderItemService = {
 
     bulkUpdateReceivedQuantities: async (items) => {
         try {
-            const response = await axios.patch(
-                PURCHASE_ORDER_ITEMS.BULK_RECEIVE,
-                { items },
-                { headers: getAuthHeaders() }
-            );
+            const response = await axiosInstance.patch(PURCHASE_ORDER_ITEMS.BULK_RECEIVE, { items });
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;

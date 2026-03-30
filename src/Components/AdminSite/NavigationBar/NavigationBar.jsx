@@ -466,12 +466,17 @@ export default function NavigationBar() {
       icon: FolderIcon,
       children: [
         { name: "Master Details", href: "/Admin/Master" },
+        { name: "Task Types", href: "/Admin/CRM/TaskTypes" },
+        { name: "Sales Stages", href: "/Admin/CRM/SalesStages" },
+        { name: "Industries", href: "/Admin/CRM/Industries" },
+        { name: "Follow-up Types", href: "/Admin/CRM/FollowupTypes" },
+        { name: "Lead Sources", href: "/Admin/CRM/LeadSources" },
         { name: "Accounts", href: "/Admin/Accounts" },
         { name: "Contact", href: "/Admin/Contact" },
-        { name: "Leads", href: "/Admin/leads" },
-        { name: "Opportunities", href: "/Admin/opportunities" },
-        { name: "PreSales", href: "/Admin/presales" },
-        { name: "Cases", href: "/Admin/cases" },
+        { name: "Leads", href: "/Admin/Leads" },
+        { name: "Opportunities", href: "/Admin/Opportunities" },
+        { name: "PreSales", href: "/Admin/PreSales" },
+        { name: "Cases", href: "/Admin/Cases" },
       ],
     },
   ];
@@ -520,7 +525,7 @@ export default function NavigationBar() {
         <div className="h-16 bg-gray-800 flex items-center justify-between px-4 border-b border-gray-700 flex-shrink-0">
           {isSidebarExpanded ? (
             <>
-              <h1 className="text-xl font-bold text-white whitespace-nowrap">SHIVANI</h1>
+              <h1 className="text-xl font-bold text-white whitespace-nowrap">LOGO</h1>
               <button
                 onClick={toggleSidebar}
                 className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700 transition"
@@ -678,7 +683,7 @@ export default function NavigationBar() {
           >
             {isMobileOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
           </button>
-          <h1 className="text-lg font-bold text-white">SHIVANI</h1>
+          <h1 className="text-lg font-bold text-white">Logo</h1>
         </div>
 
         <Menu as="div" className="relative">
