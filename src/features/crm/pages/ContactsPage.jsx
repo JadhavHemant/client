@@ -27,7 +27,7 @@ const ContactsPage = () => (
       { name: "createdBy", label: "Created by", type: "select", loadOptions: loadUserOptions },
     ]}
     fields={[
-      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions },
+      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions, required: true },
       {
         name: "AccountId",
         label: "Account",
@@ -43,7 +43,6 @@ const ContactsPage = () => (
       { name: "AltPhone", label: "Alt phone" },
       { name: "LinkedinUrl", label: "LinkedIn URL", placeholder: "https://linkedin.com/in/name" },
       { name: "Title", label: "Title", placeholder: "Manager" },
-      { name: "CreatedBy", label: "Created by", type: "select", loadOptions: loadUserOptions },
       { name: "IsActive", label: "Active", type: "checkbox", defaultValue: true },
       { name: "IsDeleted", label: "Deleted", type: "checkbox", defaultValue: false },
       { name: "Flag", label: "Flagged", type: "checkbox", defaultValue: false },

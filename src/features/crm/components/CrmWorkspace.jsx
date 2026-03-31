@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import Cookies from "js-cookie";
 import toast from "react-hot-toast";
+import { getUserFromToken } from "../../../Components/AdminSite/utils/tokenUtils";
 
 const emptyForFields = (fields) =>
   fields.reduce((acc, field) => {
@@ -24,6 +26,25 @@ const normalizeValue = (field, value) => {
   return value === "" ? null : value;
 };
 
+const ADMIN_ONLY_FIELD_NAMES = new Set(["IsActive", "IsDeleted", "Flag"]);
+
+const isCurrentUserSuperAdmin = () => {
+  try {
+    const cookieUser = Cookies.get("user");
+    if (cookieUser) {
+      const parsedUser = JSON.parse(cookieUser);
+      if (Number(parsedUser?.roleId) === 1) {
+        return true;
+      }
+    }
+  } catch (error) {
+    // ignore malformed cookie and fall back to token
+  }
+
+  const tokenUser = getUserFromToken();
+  return Number(tokenUser?.roleId) === 1;
+};
+
 const CrmWorkspace = ({
   title,
   description,
@@ -32,6 +53,11 @@ const CrmWorkspace = ({
   searchPlaceholder,
   primaryField,
 }) => {
+  const isSuperAdmin = useMemo(() => isCurrentUserSuperAdmin(), []);
+  const visibleFields = useMemo(
+    () => fields.filter((field) => isSuperAdmin || !ADMIN_ONLY_FIELD_NAMES.has(field.name)),
+    [fields, isSuperAdmin]
+  );
   const initialForm = useMemo(() => emptyForFields(fields), [fields]);
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState(initialForm);
@@ -40,41 +66,45 @@ const CrmWorkspace = ({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fieldOptions, setFieldOptions] = useState({});
+  const tableFields = useMemo(
+    () => visibleFields.filter((field) => field.name !== primaryField && !field.tableHidden).slice(0, 3),
+    [visibleFields, primaryField]
+  );
+
+  const loadFieldOptions = async (cancelled = false) => {
+    const selectableFields = visibleFields.filter((field) => typeof field.loadOptions === "function");
+
+    if (!selectableFields.length) {
+      setFieldOptions({});
+      return;
+    }
+
+    const results = await Promise.all(
+      selectableFields.map(async (field) => {
+        try {
+          const options = await field.loadOptions();
+          return [field.name, options];
+        } catch (error) {
+          toast.error(`Unable to load ${field.label.toLowerCase()} options`);
+          return [field.name, []];
+        }
+      })
+    );
+
+    if (!cancelled) {
+      setFieldOptions(Object.fromEntries(results));
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadFieldOptions = async () => {
-      const selectableFields = fields.filter((field) => typeof field.loadOptions === "function");
-
-      if (!selectableFields.length) {
-        setFieldOptions({});
-        return;
-      }
-
-      const results = await Promise.all(
-        selectableFields.map(async (field) => {
-          try {
-            const options = await field.loadOptions();
-            return [field.name, options];
-          } catch (error) {
-            toast.error(`Unable to load ${field.label.toLowerCase()} options`);
-            return [field.name, []];
-          }
-        })
-      );
-
-      if (!cancelled) {
-        setFieldOptions(Object.fromEntries(results));
-      }
-    };
-
-    loadFieldOptions();
+    loadFieldOptions(cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [fields]);
+  }, [visibleFields]);
 
   const loadRows = async () => {
     setLoading(true);
@@ -123,7 +153,7 @@ const CrmWorkspace = ({
     event.preventDefault();
     setSubmitting(true);
 
-    const payload = fields.reduce((acc, field) => {
+    const payload = visibleFields.reduce((acc, field) => {
       acc[field.name] = normalizeValue(field, form[field.name]);
       return acc;
     }, {});
@@ -138,6 +168,7 @@ const CrmWorkspace = ({
       }
 
       resetForm();
+      loadFieldOptions();
       loadRows();
     } catch (error) {
       toast.error(error.response?.data?.message || `Unable to save ${title.toLowerCase()}`);
@@ -200,7 +231,8 @@ const CrmWorkspace = ({
             </div>
 
             <div className="mt-5 space-y-4">
-              {fields.map((field) => (
+              {visibleFields.map((field) =>
+                field.createOnly && editingId ? null : (
                 <label key={field.name} className="block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">
                     {field.label}
@@ -209,6 +241,7 @@ const CrmWorkspace = ({
                     <textarea
                       value={form[field.name] ?? ""}
                       onChange={(event) => handleChange(field, event.target.value)}
+                      required={field.required}
                       rows={4}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-orange-400"
                     />
@@ -223,6 +256,7 @@ const CrmWorkspace = ({
                     <select
                       value={form[field.name] ?? ""}
                       onChange={(event) => handleChange(field, event.target.value)}
+                      required={field.required}
                       className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-400"
                     >
                       <option value="">{field.placeholder || `Select ${field.label}`}</option>
@@ -237,12 +271,14 @@ const CrmWorkspace = ({
                       type={field.type || "text"}
                       value={form[field.name] ?? ""}
                       onChange={(event) => handleChange(field, event.target.value)}
+                      required={field.required}
                       placeholder={field.placeholder || ""}
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-orange-400"
                     />
                   )}
                 </label>
-              ))}
+                )
+              )}
             </div>
 
             <button
@@ -273,10 +309,7 @@ const CrmWorkspace = ({
                       <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                         {primaryField}
                       </th>
-                      {fields
-                        .filter((field) => field.name !== primaryField)
-                        .slice(0, 3)
-                        .map((field) => (
+                      {tableFields.map((field) => (
                           <th
                             key={field.name}
                             className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
@@ -302,10 +335,7 @@ const CrmWorkspace = ({
                           <td className="px-4 py-4 text-sm font-medium text-slate-900">
                             {row[primaryField] || "-"}
                           </td>
-                          {fields
-                            .filter((field) => field.name !== primaryField)
-                            .slice(0, 3)
-                            .map((field) => (
+                          {tableFields.map((field) => (
                               <td key={field.name} className="px-4 py-4 text-sm text-slate-600">
                                 {String(getDisplayValue(field, row[field.name]))}
                               </td>

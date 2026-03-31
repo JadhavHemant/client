@@ -27,8 +27,8 @@ const AccountsPage = () => (
       { name: "createdBy", label: "Created by", type: "select", loadOptions: loadUserOptions },
     ]}
     fields={[
-      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions },
-      { name: "Name", label: "Account name", placeholder: "Acme Corp" },
+      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions, required: true },
+      { name: "Name", label: "Account name", placeholder: "Acme Corp", required: true },
       { name: "Website", label: "Website", placeholder: "https://acme.com" },
       { name: "Description", label: "Description", type: "textarea" },
       {
@@ -38,7 +38,6 @@ const AccountsPage = () => (
         loadOptions: loadIndustryOptions,
         displayKey: "IndustryName",
       },
-      { name: "CreatedBy", label: "Created by", type: "select", loadOptions: loadUserOptions },
       { name: "IsActive", label: "Active", type: "checkbox", defaultValue: true },
       { name: "IsDeleted", label: "Deleted", type: "checkbox", defaultValue: false },
       { name: "Flag", label: "Flagged", type: "checkbox", defaultValue: false },

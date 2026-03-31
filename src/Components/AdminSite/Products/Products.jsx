@@ -9,9 +9,10 @@ import * as productService from '../../../services/productService.js';
 import * as categoryService from '../../../services/categoryService.js';
 import * as companyService from '../../../services/companyService.js';
 import * as unitService from '../../../services/unitService';
+import { PUBLIC_BASE_URL, resolveAssetUrl } from '../../../utils/assetUrl';
 
 // ✅ API URL Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = PUBLIC_BASE_URL;
 
 const Products = () => {
     const [products, setProducts] = useState([]);
@@ -223,7 +224,7 @@ const Products = () => {
             productImage: null
         });
         if (product.ProductImage) {
-            setImagePreview(`${API_BASE_URL}${product.ProductImage}`);
+            setImagePreview(resolveAssetUrl(product.ProductImage));
         }
         setModalMode('edit');
         setSelectedProduct(product);
@@ -255,7 +256,7 @@ const Products = () => {
             productImage: null
         });
         if (product.ProductImage) {
-            setImagePreview(`${API_BASE_URL}${product.ProductImage}`);
+            setImagePreview(resolveAssetUrl(product.ProductImage));
         }
         setModalMode('view');
         setSelectedProduct(product);
@@ -509,7 +510,7 @@ const Products = () => {
                                                     <div className="flex items-center gap-3">
                                                         {product.ProductImage ? (
                                                             <img 
-                                                                src={`${API_BASE_URL}${product.ProductImage}`}
+                                                                src={resolveAssetUrl(product.ProductImage)}
                                                                 alt={product.ProductName}
                                                                 className="h-10 w-10 rounded object-cover border-2 border-blueGray-200" 
                                                             />

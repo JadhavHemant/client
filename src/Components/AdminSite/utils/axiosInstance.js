@@ -185,6 +185,7 @@ const isProduction = window.location.protocol === 'https:';
 // ✅ Add base URL to avoid relative path issues
 const axiosInstance = axios.create({
     baseURL: API.API_BASE_URL || 'http://localhost:5351/api',
+    withCredentials: true,
     timeout: 30000, // 30 seconds
     headers: {
         'Content-Type': 'application/json'

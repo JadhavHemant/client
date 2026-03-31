@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import * as API from "../../Endpoint/Endpoint";
+import { Link } from "react-router-dom";
 
 const initialForm = {
   name: "",
@@ -8,6 +9,7 @@ const initialForm = {
   password: "",
   mobileNumber: "",
   companyId: "",
+  roleId: "",
   userTypeId: "",
   reportingManagerId: "",
   departmentId: "",
@@ -18,6 +20,18 @@ const initialForm = {
   state: "",
   country: "",
   postalCode: "",
+};
+
+const fieldLabels = {
+  companyId: "Company",
+  roleId: "Role",
+  userTypeId: "Access Type",
+  reportingManagerId: "Reporting Manager",
+  departmentId: "Department Id",
+  designationId: "Designation Id",
+  hierarchyLevel: "Hierarchy Level",
+  mobileNumber: "Mobile Number",
+  postalCode: "Postal Code",
 };
 
 const buildTree = (rows) => {
@@ -61,6 +75,8 @@ const HierarchyNode = ({ node }) => {
 const UsersPage = () => {
   const [users, setUsers] = useState([]);
   const [companies, setCompanies] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [userTypes, setUserTypes] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -101,6 +117,26 @@ const UsersPage = () => {
     }
   };
 
+  const fetchRoles = async () => {
+    try {
+      const response = await axiosInstance.get(API.ROLES);
+      setRoles(response.data || []);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      setRoles([]);
+    }
+  };
+
+  const fetchUserTypes = async () => {
+    try {
+      const response = await axiosInstance.get(API.USER_TYPES);
+      setUserTypes(response.data || []);
+    } catch (error) {
+      console.error("Error fetching user types:", error);
+      setUserTypes([]);
+    }
+  };
+
   const fetchHierarchy = async () => {
     setHierarchyLoading(true);
     try {
@@ -121,6 +157,8 @@ const UsersPage = () => {
 
   useEffect(() => {
     fetchCompanies();
+    fetchRoles();
+    fetchUserTypes();
   }, []);
 
   useEffect(() => {
@@ -147,6 +185,7 @@ const UsersPage = () => {
       password: "",
       mobileNumber: user.mobileNumber || "",
       companyId: user.companyId ? String(user.companyId) : "",
+      roleId: user.roleId ? String(user.roleId) : "",
       userTypeId: user.userTypeId ? String(user.userTypeId) : "",
       reportingManagerId: user.reportingManagerId ? String(user.reportingManagerId) : "",
       departmentId: user.departmentId ? String(user.departmentId) : "",
@@ -217,6 +256,7 @@ const UsersPage = () => {
     "password",
     "mobileNumber",
     "companyId",
+    "roleId",
     "userTypeId",
     "reportingManagerId",
     "departmentId",
@@ -235,6 +275,27 @@ const UsersPage = () => {
     return company?.CompanyName || companyId;
   };
 
+  const getRoleName = (roleId) => {
+    if (!roleId) return "-";
+    const role = roles.find((item) => String(item.Id) === String(roleId));
+    return role?.RoleName || roleId;
+  };
+
+  const getUserTypeName = (userTypeId) => {
+    if (!userTypeId) return "-";
+    const userType = userTypes.find((item) => String(item.UserTypeId) === String(userTypeId));
+    return userType?.UserType || userTypeId;
+  };
+
+  const managerOptions = useMemo(
+    () =>
+      users.map((user) => ({
+        value: String(user.id),
+        label: `${user.name} (${user.email})`,
+      })),
+    [users]
+  );
+
   return (
     <div className="space-y-6 p-4 sm:p-6 md:p-8">
       <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -243,12 +304,20 @@ const UsersPage = () => {
             <h2 className="text-2xl font-bold text-slate-800">Users List</h2>
             <p className="text-sm text-slate-500">Create and update records from a single clean list page.</p>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            Create New Record
-          </button>
+          <div className="flex gap-2">
+            <Link
+              to="/Admin/users/register"
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Register Page
+            </Link>
+            <button
+              onClick={openCreateModal}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Quick Create
+            </button>
+          </div>
         </div>
 
         <input
@@ -270,7 +339,8 @@ const UsersPage = () => {
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="px-4 py-3 text-left">Mobile</th>
                 <th className="px-4 py-3 text-left">Company</th>
-                <th className="px-4 py-3 text-left">Role Type</th>
+                <th className="px-4 py-3 text-left">Role</th>
+                <th className="px-4 py-3 text-left">Access Type</th>
                 <th className="px-4 py-3 text-left">Manager</th>
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3 text-left">Actions</th>
@@ -284,7 +354,8 @@ const UsersPage = () => {
                     <td className="px-4 py-3">{user.email}</td>
                     <td className="px-4 py-3">{user.mobileNumber || "-"}</td>
                     <td className="px-4 py-3">{getCompanyName(user.companyId)}</td>
-                    <td className="px-4 py-3">{user.userTypeId || "-"}</td>
+                    <td className="px-4 py-3">{getRoleName(user.roleId)}</td>
+                    <td className="px-4 py-3">{getUserTypeName(user.userTypeId)}</td>
                     <td className="px-4 py-3">{user.reportingManagerName || "-"}</td>
                     <td className="px-4 py-3">
                       <span
@@ -307,7 +378,7 @@ const UsersPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-500">
                     No users found.
                   </td>
                 </tr>
@@ -400,7 +471,7 @@ const UsersPage = () => {
               {fields.map((field) => (
                 <label key={field} className="flex flex-col gap-1 text-sm">
                   <span className="capitalize text-slate-700">
-                    {field === "companyId" ? "Company" : field}
+                    {fieldLabels[field] || field}
                   </span>
                   {field === "companyId" ? (
                     <select
@@ -414,6 +485,49 @@ const UsersPage = () => {
                       {companies.map((company) => (
                         <option key={company.Id} value={company.Id}>
                           {company.CompanyName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field === "roleId" ? (
+                    <select
+                      name={field}
+                      value={form[field]}
+                      onChange={(event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))}
+                      required
+                      className="rounded border border-slate-300 px-3 py-2"
+                    >
+                      <option value="">Select role</option>
+                      {roles.map((role) => (
+                        <option key={role.Id} value={role.Id}>
+                          {role.RoleName}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field === "userTypeId" ? (
+                    <select
+                      name={field}
+                      value={form[field]}
+                      onChange={(event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))}
+                      className="rounded border border-slate-300 px-3 py-2"
+                    >
+                      <option value="">Select access type</option>
+                      {userTypes.map((userType) => (
+                        <option key={userType.UserTypeId} value={userType.UserTypeId}>
+                          {userType.UserType}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field === "reportingManagerId" ? (
+                    <select
+                      name={field}
+                      value={form[field]}
+                      onChange={(event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))}
+                      className="rounded border border-slate-300 px-3 py-2"
+                    >
+                      <option value="">Select manager</option>
+                      {managerOptions.map((manager) => (
+                        <option key={manager.value} value={manager.value}>
+                          {manager.label}
                         </option>
                       ))}
                     </select>

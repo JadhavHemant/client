@@ -421,6 +421,7 @@ import LogoutButton from "../LogoutButton/LogoutButton";
 import { useEffect, useState } from "react";
 import axiosInstance from "../utils/axiosInstance";
 import * as API from "../../Endpoint/Endpoint";
+import { resolveAssetUrl } from "../../../utils/assetUrl";
 
 export default function NavigationBar() {
   const [uData, setData] = useState(null);
@@ -484,7 +485,7 @@ export default function NavigationBar() {
   useEffect(() => {
     axiosInstance
       .get(API.PROFILE)
-      .then((res) => setData(res.data))
+      .then((res) => setData(res.data?.profile || null))
       .catch((err) => {
         const message =
           err.response?.data?.message || "Failed to fetch profile.";
@@ -627,7 +628,7 @@ export default function NavigationBar() {
               <div className="flex items-center justify-center w-9 h-9 rounded-full bg-orange-500 text-white font-bold flex-shrink-0">
                 {uData?.image ? (
                   <img
-                    src={`http://localhost:5351/${uData.image}`}
+                    src={resolveAssetUrl(uData.image)}
                     alt="User"
                     className="w-9 h-9 rounded-full object-cover"
                   />
@@ -650,7 +651,7 @@ export default function NavigationBar() {
             <MenuItems className="absolute bottom-full left-0 mb-2 w-48 rounded-lg bg-gray-800 shadow-lg py-1 border border-gray-700">
               <MenuItem>
                 <Link
-                  to="/profile"
+                  to="/Admin/profile"
                   className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md mx-1"
                 >
                   Your Profile
@@ -658,7 +659,7 @@ export default function NavigationBar() {
               </MenuItem>
               <MenuItem>
                 <Link
-                  to="/settings"
+                  to="/Admin/settings"
                   className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-md mx-1"
                 >
                   Settings
@@ -690,7 +691,7 @@ export default function NavigationBar() {
           <MenuButton className="flex items-center justify-center w-9 h-9 rounded-full bg-orange-500 text-white font-bold">
             {uData?.image ? (
               <img
-                src={`http://localhost:5351/${uData.image}`}
+                src={resolveAssetUrl(uData.image)}
                 alt="User"
                 className="w-9 h-9 rounded-full object-cover"
               />
@@ -701,12 +702,12 @@ export default function NavigationBar() {
 
           <MenuItems className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-800 shadow-lg py-1 border border-gray-700">
             <MenuItem>
-              <Link to="/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+              <Link to="/Admin/profile" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
                 Your Profile
               </Link>
             </MenuItem>
             <MenuItem>
-              <Link to="/settings" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+              <Link to="/Admin/settings" className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
                 Settings
               </Link>
             </MenuItem>

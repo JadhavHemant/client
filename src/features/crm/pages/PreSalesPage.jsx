@@ -40,7 +40,7 @@ const PreSalesPage = () => (
       { name: "taskTypeId", label: "Task type", type: "select", loadOptions: loadTaskTypeOptions },
     ]}
     fields={[
-      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions },
+      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions, required: true },
       { name: "LeadId", label: "Lead", type: "select", loadOptions: loadLeadOptions },
       {
         name: "OpportunityId",
@@ -69,7 +69,6 @@ const PreSalesPage = () => (
         type: "select",
         loadOptions: loadUserOptions,
       },
-      { name: "CreatedBy", label: "Created by", type: "select", loadOptions: loadUserOptions },
       { name: "IsActive", label: "Active", type: "checkbox", defaultValue: true },
       { name: "IsDeleted", label: "Deleted", type: "checkbox", defaultValue: false },
       { name: "Flag", label: "Flagged", type: "checkbox", defaultValue: false },

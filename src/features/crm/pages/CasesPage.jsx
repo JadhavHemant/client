@@ -68,7 +68,7 @@ const CasesPage = () => (
       },
     ]}
     fields={[
-      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions },
+      { name: "CompanyId", label: "Company", type: "select", loadOptions: loadCompanyOptions, required: true },
       { name: "AccountId", label: "Account", type: "select", loadOptions: loadAccountOptions, displayKey: "AccountName" },
       { name: "ContactId", label: "Contact", type: "select", loadOptions: loadContactOptions, displayKey: "ContactName" },
       { name: "LeadId", label: "Lead", type: "select", loadOptions: loadLeadOptions },
@@ -78,7 +78,7 @@ const CasesPage = () => (
         type: "select",
         loadOptions: loadOpportunityOptions,
       },
-      { name: "Subject", label: "Subject", placeholder: "Production issue" },
+      { name: "Subject", label: "Subject", placeholder: "Production issue", required: true },
       { name: "Status", label: "Status", placeholder: "Open" },
       { name: "Priority", label: "Priority", placeholder: "High" },
       { name: "Description", label: "Description", type: "textarea" },
@@ -90,7 +90,6 @@ const CasesPage = () => (
         type: "select",
         loadOptions: loadUserOptions,
       },
-      { name: "CreatedBy", label: "Created by", type: "select", loadOptions: loadUserOptions },
       { name: "IsActive", label: "Active", type: "checkbox", defaultValue: true },
       { name: "IsDeleted", label: "Deleted", type: "checkbox", defaultValue: false },
       { name: "Flag", label: "Flagged", type: "checkbox", defaultValue: false },

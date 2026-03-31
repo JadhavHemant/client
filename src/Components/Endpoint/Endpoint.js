@@ -24,6 +24,8 @@ export const USERS_HIERARCHY = `${BASE_URL}/org/hierarchy`;
 export const USERS_MY_TEAM = `${BASE_URL}/my-team`;
 export const USERS_DIRECT_REPORTS = (userId) => `${BASE_URL}/direct-reports/${userId}`;
 export const USERS_COMPANY_ORG = (companyId) => `${BASE_URL}/company/${companyId}/org-chart`;
+export const ROLES = `${API_BASE_URL}/roles`;
+export const USER_TYPES = `${API_BASE_URL}/usertypes/get/usertypes`;
 
 // ==================== REPORTS & MONITORING ====================
 export const REPORTS_DASHBOARD = `${API_BASE_URL}/reports/dashboard`;

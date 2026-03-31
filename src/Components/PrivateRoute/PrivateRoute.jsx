@@ -1,13 +1,14 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import Cookies from 'js-cookie';
+import { getDefaultPortalPath } from '../../utils/sessionUser';
 
 const PrivateRoute = () => {
   const isLoggedIn = !!Cookies.get('accessToken') || !!Cookies.get('refreshToken');
   if (!isLoggedIn) {
     return <Navigate to='/login' />;
   }
-  return <Outlet />;
+  return <Navigate to={getDefaultPortalPath()} replace />;
 };
 
 export default PrivateRoute;

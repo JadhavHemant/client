@@ -7,7 +7,8 @@ import LoginPage from "../LoginPage/LoginPage";
 import HomePage from "../AdminSite/HomePage/HomePage";
 import Users from "../AdminSite/Users/Users";
 import PrivateRoute from "../PrivateRoute/PrivateRoute";
-import CompanyManagement from "../AdminSite/Company/Company";
+import AdminRoute from "../PrivateRoute/AdminRoute";
+import UserRoute from "../PrivateRoute/UserRoute";
 import ProductCategeory from "../AdminSite/ProductCategeory/ProductCategeory";
 import Products from "../AdminSite/Products/Products";
 import Reports from "../AdminSite/Reports/Reports";
@@ -34,6 +35,12 @@ import PurchaseOrderManagement from "../AdminSite/PurchaseOrders/PurchaseOrderMa
 import PurchaseOrderItems from "../AdminSite/PurchaseOrderItems/PurchaseOrderItems";
 import Customers from "../AdminSite/Customers/Customers";
 import SalesOrders from "../AdminSite/SalesOrders/SalesOrders";
+import Profile from "../AdminSite/Profile/Profile";
+import EditProfilePage from "../AdminSite/Profile/EditProfilePage";
+import SettingsPage from "../AdminSite/Settings/SettingsPage";
+import RegisterUserPage from "../AdminSite/Users/RegisterUserPage";
+import UserPortalLayout from "../UserPortal/UserPortalLayout";
+import UserDashboard from "../UserPortal/UserDashboard";
 
 const MainRouting = () => {
   return (
@@ -42,14 +49,19 @@ const MainRouting = () => {
         <Route path="/login" element={<LoginCommon />}>
           <Route index element={<LoginPage />} />
         </Route>
-        <Route element={<PrivateRoute />}>
+        <Route path="/" element={<PrivateRoute />} />
+        <Route element={<AdminRoute />}>
           <Route path="/Admin" element={<Navigation />}>
             <Route index element={<HomePage />} />
             <Route path="category" element={<ProductCategeory />} />
             <Route path="Units" element={<Units />} />
             <Route path="Company" element={<Companies />} />
             <Route path="users" element={<Users />} />
+            <Route path="users/register" element={<RegisterUserPage />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings/profile" element={<EditProfilePage />} />
             {/* <Route path="Sales" element={<Sell />} /> */}
             <Route path="Product" element={<Products />} />
             <Route path="Warehouse" element={ <Warehouse/> }/>
@@ -74,6 +86,27 @@ const MainRouting = () => {
             <Route path="Cases" element={<Cases />} />
             <Route path="Accounts" element={<Accounts />} />
             <Route path="Contact" element={<Contact />} />
+          </Route>
+        </Route>
+        <Route element={<UserRoute />}>
+          <Route path="/user" element={<UserPortalLayout />}>
+            <Route index element={<UserDashboard />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="settings/profile" element={<EditProfilePage />} />
+            <Route path="accounts" element={<Accounts />} />
+            <Route path="contacts" element={<Contact />} />
+            <Route path="leads" element={<Leads />} />
+            <Route path="opportunities" element={<Opportunities />} />
+            <Route path="presales" element={<PreSales />} />
+            <Route path="cases" element={<Cases />} />
+            <Route path="products" element={<Products />} />
+            <Route path="warehouses" element={<Warehouse />} />
+            <Route path="customers" element={<Customers />} />
+            <Route path="suppliers" element={<SupplierManagement />} />
+            <Route path="purchase-orders" element={<PurchaseOrderManagement />} />
+            <Route path="sales-orders" element={<SalesOrders />} />
+            <Route path="reports" element={<Reports />} />
           </Route>
         </Route>
         <Route path="*" element={<LoginPage />} />

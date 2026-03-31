@@ -4,6 +4,7 @@ import Cookies from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
 import * as API from '../Endpoint/Endpoint';
 import { setAccessTokenWithExpiry } from '../AdminSite/utils/tokenUtils';
+import { getDefaultPortalPath } from '../../utils/sessionUser';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -16,7 +17,7 @@ const [showPassword, setShowPassword] = useState(false);
     const token = Cookies.get('accessToken');
     const user = Cookies.get('user');
     if (token && user) {
-      navigate('/admin');
+      navigate(getDefaultPortalPath(), { replace: true });
     }
   }, [navigate]);
 
@@ -38,7 +39,7 @@ const [showPassword, setShowPassword] = useState(false);
         path: '/',
         sameSite: 'Lax',
       });  
-      navigate('/admin');
+      navigate(getDefaultPortalPath(user), { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     }
